@@ -1,5 +1,5 @@
-import React, { useEffect, useState,useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Modal, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, Modal, Alert, Image,TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import Header from '../components/Header';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,12 +8,19 @@ import { BlurView } from 'expo-blur';
 import { Calendar, CalendarProps } from 'react-native-calendars';
 import { Camera } from 'react-native-camera-kit'; // Updated import
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker'; // Import the ImagePicker
 
 const HomePage: React.FC = () => {
   const router = useRouter();
-  const [modalVisible, setModalVisible] = useState(false);
+  const [absenModal, setAbsenModalVisible] = useState(false);
+  const [izinModal, setIzingModalVisible] = useState(false);
+  const [alasanInput, setAlesanInput] = useState("")
+
+
   const [cameraVisible, setCameraVisible] = useState(false);
   const cameraRef = useRef<Camera>(null); // Correctly typed ref
+
+  const [selectedImage, setSelectedImage] = useState<string | null>(null); // State to store the selected image URI
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -64,100 +71,143 @@ const HomePage: React.FC = () => {
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
 
-        const blob = await (await fetch(manipulatedImage.uri)).blob();
+        // Process the manipulated image
+        setSelectedImage(manipulatedImage.uri);
 
-        const formData = new FormData();
-        formData.append('file', blob, 'photo.jpg');
-
-        // Replace this with your actual upload function to UploadThing
-        const response = await fetch('YOUR_UPLOADTHING_URL', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        if (response.ok) {
-          Alert.alert('Upload Successful', 'Your photo was uploaded successfully!');
-        } else {
-          Alert.alert('Upload Failed', 'There was a problem uploading your photo.');
-        }
        } catch (error) {
-        console.error('Failed to upload image:', error);
-        Alert.alert('Error', 'Failed to upload image.');
+        console.error('Failed to take image:', error);
+        Alert.alert('Error', 'Failed to take image.');
       } finally {
         setCameraVisible(false);
       }
     }
   };
 
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+
   return (
     <View style={{ flex: 1 }}>
-      <Header onToggleSidenav={toggleSidenav} />
+    <Header onToggleSidenav={toggleSidenav} />
 
-      {isSidenavVisible && (
-        <TouchableOpacity style={styles.blurContainer} activeOpacity={1} onPress={closeSidenav}>
-          <BlurView intensity={50} style={StyleSheet.absoluteFill}>
-            <View style={styles.overlay} />
-          </BlurView>
-        </TouchableOpacity>
-      )}
+    {isSidenavVisible && (
+      <TouchableOpacity style={styles.blurContainer} activeOpacity={1} onPress={closeSidenav}>
+        <BlurView intensity={50} style={StyleSheet.absoluteFill}>
+          <View style={styles.overlay} />
+        </BlurView>
+      </TouchableOpacity>
+    )}
 
-      <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
+    <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
 
-      <View className="flex gap-2 p-5">
-        <Text className="mb-2 text-xl font-extrabold">Absen Sales</Text>
-        <View className="bg-[#FDCE35] flex p-5 rounded-md w-full shadow-lg">
-          <View>
-            <Text className="font-bold text-white">Senin</Text>
-            <Text className="font-bold text-white">8:00 AM - 5:00 PM</Text>
-          </View>
-          <View>
-            <Text className="font-bold text-white">Lokasi:-</Text>
-            <Text className="font-bold text-white">Total Waktu Hari Ini:-</Text>
-          </View>
+    <View className="flex gap-2 p-5">
+      <Text className="mb-2 text-xl font-extrabold">Absen Sales</Text>
+      <View className="bg-[#FDCE35] flex p-5 rounded-md w-full shadow-lg">
+        <View>
+          <Text className="font-bold text-white">Senin</Text>
+          <Text className="font-bold text-white">8:00 AM - 5:00 PM</Text>
         </View>
+        <View>
+          <Text className="font-bold text-white">Lokasi:-</Text>
+          <Text className="font-bold text-white">Total Waktu Hari Ini:-</Text>
+        </View>
+      </View>
 
-        <View className="flex flex-row flex-wrap justify-center gap-4">
-          <TouchableOpacity
-            className="bg-[#159847] w-[160px] rounded-md py-3 px-1"
-            onPress={() => setModalVisible(true)}
-          >
-            <Text className="font-bold text-center text-white">Absen Masuk</Text>
-          </TouchableOpacity>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={() => setModalVisible(!modalVisible)}
-          >
-            <View style={styles.modalBackground}>
-              <View style={styles.modalView}>
-                <Text className="text-md">Take a Selfie Right Now</Text>
+      <View className="flex flex-row flex-wrap justify-center gap-4">
+        <TouchableOpacity
+          className="bg-[#159847] w-[160px] rounded-md py-3 px-1"
+          onPress={() => setAbsenModalVisible(true)}
+        >
+          <Text className="font-bold text-center text-white">Absen Masuk</Text>
+        </TouchableOpacity>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={absenModal}
+          onRequestClose={() => setAbsenModalVisible(!absenModal)}
+        >
+          <View style={styles.modalBackground}>
+            <View style={styles.modalView}>
+              <Text className="text-md">Take a Selfie Right Now</Text>
 
-                <TouchableOpacity style={styles.closeButton} onPress={handleCameraPress}>
-                  <Text style={styles.textStyle}>Open Camera</Text>
-                </TouchableOpacity>
+              <TouchableOpacity style={styles.closeButton} onPress={handleCameraPress}>
+                <Text style={styles.textStyle}>Open Camera</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setModalVisible(!modalVisible)}
-                >
-                  <Text style={styles.textStyle}>Hide Modal</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setAbsenModalVisible(!absenModal)}
+              >
+                <Text style={styles.textStyle}>Hide Modal</Text>
+              </TouchableOpacity>
             </View>
-          </Modal>
+          </View>
+        </Modal>
 
-          <TouchableOpacity className="bg-[#F23737] w-[160px] rounded-md py-3 px-1">
-            <Text className="font-bold text-center text-white">Absen Pulang</Text>
-          </TouchableOpacity>
-          <TouchableOpacity className="bg-[#00CABE] w-[160px] rounded-md py-3 px-1">
-            <Text className="font-bold text-center text-white">Izin</Text>
+        <TouchableOpacity className="bg-[#F23737] w-[160px] rounded-md py-3 px-1">
+          <Text className="font-bold text-center text-white">Absen Pulang</Text>
+        </TouchableOpacity>
+        <TouchableOpacity className="bg-[#00CABE] w-[160px] rounded-md py-3 px-1" onPress={()=>setIzingModalVisible(true)}>
+          <Text className="font-bold text-center text-white">Izin</Text>
+        </TouchableOpacity>
+        <Modal animationType='slide' transparent={true}visible={izinModal} onRequestClose={()=>setIzingModalVisible(!absenModal)}>
+        <View className="p-3" style={styles.modalBackground} >
+            <View className='bg-white p-5 w-[100%] rounded-md'>
+              <Text className="text-xl font-bold mb-5">Izin</Text>
+
+              <View className=''>
+        <View className='flex flex-col gap-4'>
+
+          <View>
+            <Text className='font-extrabold'>Alasan</Text>
+            <TextInput
+            editable
+            className='border-[0.5px] border-gray-300 px-2'
+            maxLength={40}
+            value={alasanInput}
+            onChangeText={(alesanInput) => setAlesanInput(alesanInput)} 
+            />
+          </View>
+          <View>
+            <Text className='font-extrabold'>Lampiran</Text>
+            <TouchableOpacity className='border ' style={styles.uploadButton} onPress={pickImage}>
+              <Text className='text-black'>Pick Image</Text>
+            </TouchableOpacity>
+
+            {selectedImage && (
+              <Image
+                source={{ uri: selectedImage }}
+                style={styles.selectedImage}
+              />
+            )}
+          </View>
+          <TouchableOpacity className="bg-[#159847] py-2 px-2">
+            <Text className="text-sm font-bold text-center text-white">Submit</Text>
           </TouchableOpacity>
         </View>
       </View>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setIzingModalVisible(!izinModal)}
+              >
+                <Text style={styles.textStyle}>Hide Modal</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </View>
+
 
       <View className="p-5 mx-5 mb-3 bg-white rounded-xl">
         <Text className="text-center text-[16px] font-bold">Presensi</Text>
@@ -203,24 +253,36 @@ const HomePage: React.FC = () => {
         />
       </View>
 
-      <View className="flex flex-row items-center justify-center gap-12">
+      <View className="flex flex-row items-center justify-center gap-10">
         <View className="flex items-center justify-center">
-          <View className="pt-[2px]" style={[styles.legendDot, { backgroundColor: '#159847' }]}>
+          <View className="pt-1" style={[styles.legendDot, { backgroundColor: '#159847' }]}>
             <Text className="text-sm text-center text-white">1</Text>
           </View>
           <Text className="text-sm text-center">Hadir</Text>
         </View>
         <View className="flex items-center justify-center">
-          <View className="pt-[2px]" style={[styles.legendDot, { backgroundColor: '#F2D437' }]}>
+          <View className="pt-1" style={[styles.legendDot, { backgroundColor: '#F2D437' }]}>
             <Text className="text-sm text-center text-white">1</Text>
           </View>
           <Text className="text-sm text-center">Libur</Text>
         </View>
         <View className="flex items-center justify-center">
-          <View className="pt-[2px]" style={[styles.legendDot, { backgroundColor: '#D84848' }]}>
+          <View className="pt-1" style={[styles.legendDot, { backgroundColor: '#00CABE' }]}>
             <Text className="text-sm text-center text-white">1</Text>
           </View>
           <Text className="text-sm text-center">Izin</Text>
+        </View>
+        <View className="flex items-center justify-center">
+          <View className="pt-1" style={[styles.legendDot, { backgroundColor: '#B0AF9F' }]}>
+            <Text className="text-sm text-center text-white">1</Text>
+          </View>
+          <Text className="text-sm text-center">Sakit</Text>
+        </View>
+        <View className="flex items-center justify-center">
+          <View className="pt-1" style={[styles.legendDot, { backgroundColor: '#6F6262' }]}>
+            <Text className="text-sm text-center text-white">1</Text>
+          </View>
+          <Text className="text-sm text-center">Alpha</Text>
         </View>
       </View>
 
@@ -290,15 +352,24 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginTop: 20,
   },
+  uploadButton: {
+
+    padding: 10,
+  },
+  selectedImage: {
+    width: 100,
+    height: 100,
+    marginTop: 10,
+  },
   textStyle: {
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
   },
   legendDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 5,
   },
 });
 
