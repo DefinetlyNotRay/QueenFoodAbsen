@@ -22,6 +22,10 @@ db.connect(err => {
     if (err) throw err;
     console.log('Connected to MySQL database');
 })
+app.post('/generate-upload-url', (req, res) => {
+  const uploadURL = "Your generated UploadThing URL here"; // Replace this with actual code to generate the URL
+  res.json({ uploadURL });
+});
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
@@ -48,6 +52,10 @@ app.post('/login', (req, res) => {
         res.json({ success: false, message: 'Invalid username or password' });
       }
     });
+  });
+
+  app.post('/alesanSend', (req, res) => {
+    
   });
   
 
