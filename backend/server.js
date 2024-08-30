@@ -3,12 +3,23 @@ const mysql = require('mysql2');
 const bodyparser = require('body-parser')
 const cors = require('cors')
 const jwt = require('jsonwebtoken');
-
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 const app = express()
 const port = 5000
 
+cloudinary.config({
+  cloud_name: 'dezla8wit',
+  api_key: '725447651591522',
+  api_secret: 'GbF49ob4jdpoZmw3ScT8ZKiSENQ',
+});
+
 app.use(bodyparser.json());
-app.use(cors({origin: true, credentials: true}));
+app.use(cors({
+  origin: '*', // Or specify your React Native app’s URL
+  credentials: true
+}));
 const secretKey = 'asdhasjdhe2y9813h1ui3'; // Replace 'yourSecretKey' with a strong, random key
 
 const db = mysql.createConnection({
@@ -54,9 +65,49 @@ app.post('/login', (req, res) => {
     });
   });
 
-  app.post('/alesanSend', (req, res) => {
-    
+// Set up Multer storage with Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'uploads', // Optional: folder name in Cloudinary
+    allowed_formats: ['jpg', 'png', 'jpeg'],
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// Route to handle image upload
+app.post('/upload-image', upload.single('image'), (req, res) => {
+  try {
+    // The image URL will be available in req.file.path
+    const imageUrl = req.file.path;
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
+
+  
+  app.post('/save-data', (req, res) => {
+    const { alasanInput, imageLink } = req.body;
+  
+    if (!alasanInput || !imageLink) {
+      return res.status(400).json({ error: 'Alasan and Image Link are required' });
+    }
+  
+    const query = 'INSERT INTO alasanTable (alasan, foto) VALUES (?, ?)'; // Update the table and column names as necessary
+  
+    db.query(query, [alasanInput, imageLink], (err, results) => {
+      if (err) {
+        console.error('Database Error:', err);
+        return res.status(500).json({ error: 'Failed to save to database' });
+      }
+  
+      res.json({ success: true, message: 'Data saved successfully' });
+    });
   });
+  
   
 
 app.listen(port, () => {

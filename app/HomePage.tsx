@@ -9,6 +9,7 @@ import { Calendar, CalendarProps } from 'react-native-calendars';
 import { Camera } from 'react-native-camera-kit'; // Updated import
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker'; // Import the ImagePicker
+import axios from 'axios';
 
 const HomePage: React.FC = () => {
   const router = useRouter();
@@ -94,6 +95,56 @@ const HomePage: React.FC = () => {
       setSelectedImage(result.assets[0].uri);
     }
   };
+  const convertToBlob = async (uri:string) => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return blob;
+  };
+  
+  const submitForm = async () => {
+    if (!alasanInput || !selectedImage) {
+      Alert.alert('Error', 'Please fill in all fields and select an image.');
+      return;
+    }
+  
+    try {
+      // Convert image URI to Blob
+      const imageBlob = await convertToBlob(selectedImage);
+      console.log('Image Blob:', imageBlob); // Debugging line
+  
+      // Create FormData
+      const formData = new FormData();
+      formData.append('image', imageBlob, 'photo.jpg'); // 'photo.jpg' is the file name
+  
+      // Upload image to the backend
+      console.log('Uploading image...');
+      const uploadResponse = await axios.post('https://d66e-103-224-125-54.ngrok-free.app/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      console.log('Upload Response:', uploadResponse.data); // Debugging line
+  
+      const imageLink = uploadResponse.data.imageUrl;
+  
+      // Send alasanInput and imageLink to your database
+      console.log('Saving data...');
+      const saveResponse = await axios.post('https://d66e-103-224-125-54.ngrok-free.app/save-data', {
+        alasanInput,
+        imageLink,
+      });
+      console.log('Save Response:', saveResponse.data); // Debugging line
+  
+      Alert.alert('Success', 'Form submitted successfully.');
+      setAlesanInput('');
+      setSelectedImage(null);
+    } catch (error) {
+      console.error('Error submitting form:', error.response ? error.response.data : error.message); // Improved error logging
+      Alert.alert('Error', 'Failed to submit form.');
+    }
+  };
+  
+  
+  
+  
 
 
   return (
@@ -191,7 +242,7 @@ const HomePage: React.FC = () => {
               />
             )}
           </View>
-          <TouchableOpacity className="bg-[#159847] py-2 px-2">
+          <TouchableOpacity className="bg-[#159847] py-2 px-2" onPress={submitForm}>
             <Text className="text-sm font-bold text-center text-white">Submit</Text>
           </TouchableOpacity>
         </View>
