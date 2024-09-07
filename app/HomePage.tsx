@@ -10,8 +10,20 @@ import { Camera } from 'react-native-camera-kit'; // Updated import
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker'; // Import the ImagePicker
 import axios from 'axios';
-
+import jwtDecode from 'jwt-decode';
+interface DecodedToken {
+  id: string;
+  username: string;
+  // Add other fields if needed
+}
 const HomePage: React.FC = () => {
+  const statusColors = {
+    Hadir: '#159847',
+    Libur: '#F2D437',
+    Izin: '#00CABE',
+    Sakit: '#B0AF9F',
+    Alpha: '#6F6262',
+  };
   const router = useRouter();
   const [absenModal, setAbsenModalVisible] = useState(false);
   const [izinModal, setIzingModalVisible] = useState(false);
@@ -37,6 +49,72 @@ const HomePage: React.FC = () => {
 
     checkAuth();
   }, []);
+  
+  const [markedDates, setMarkedDates] = useState({});
+  
+  useEffect(() => {
+  const fetchAttendanceData = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('User ID not found in AsyncStorage');
+      }
+
+      const response = await axios.get(`https://ec51-27-131-1-4.ngrok-free.app/attendance/${userId}`);
+      const attendanceData = response.data;
+
+      // Get today's date and start date (September 1st)
+      const today = new Date();
+      const startDate = new Date('2024-09-01');
+
+      // Initialize dates object with Alpha status for every day from startDate until today
+      const dates = {};
+      let currentDate = new Date(startDate);
+
+      while (currentDate <= today) {
+        const dateString = currentDate.toISOString().split('T')[0];
+        dates[dateString] = {
+          selected: true,
+          selectedColor: statusColors['Alpha'],
+          dotColor: 'red',
+          selectedTextColor: 'white',
+        };
+        currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
+      }
+
+      // Update dates object based on attendance data
+      attendanceData.forEach((item) => {
+        const { absen_time, detail } = item;
+        const date = absen_time.split('T')[0]; // Extract date part from absen_time
+
+        // Debugging line to check the detail and statusColors
+        console.log(`Detail: ${detail}, Color: ${statusColors[detail]}`);
+
+        if (statusColors[detail]) {
+          dates[date] = {
+            selected: true,
+            selectedColor: statusColors[detail],
+            dotColor: 'red',
+            selectedTextColor: 'white',
+          };
+        }
+      });
+
+      // Debugging line to see the final dates object
+      console.log('Marked Dates:', dates);
+
+      // Set marked dates
+      setMarkedDates(dates);
+    } catch (error) {
+      console.error('Error fetching attendance data:', error);
+      Alert.alert('Error', 'An error occurred while fetching attendance data');
+    }
+  };
+
+  fetchAttendanceData();
+}, []);
+
+  
 
   const [isSidenavVisible, setSidenavVisible] = useState(false);
 
@@ -95,11 +173,13 @@ const HomePage: React.FC = () => {
       setSelectedImage(result.assets[0].uri);
     }
   };
-  const convertToBlob = async (uri:string) => {
+  const convertToBlob = async (uri: string): Promise<Blob> => {
     const response = await fetch(uri);
     const blob = await response.blob();
     return blob;
   };
+  
+  
   
   const submitForm = async () => {
     if (!alasanInput || !selectedImage) {
@@ -118,8 +198,10 @@ const HomePage: React.FC = () => {
   
       // Upload image to the backend
       console.log('Uploading image...');
-      const uploadResponse = await axios.post('https://d66e-103-224-125-54.ngrok-free.app/upload-image', formData, {
+      const uploadResponse = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/upload-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 10000, // 10 seconds
+
       });
       console.log('Upload Response:', uploadResponse.data); // Debugging line
   
@@ -127,7 +209,7 @@ const HomePage: React.FC = () => {
   
       // Send alasanInput and imageLink to your database
       console.log('Saving data...');
-      const saveResponse = await axios.post('https://d66e-103-224-125-54.ngrok-free.app/save-data', {
+      const saveResponse = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/save-data', {
         alasanInput,
         imageLink,
       });
@@ -136,7 +218,7 @@ const HomePage: React.FC = () => {
       Alert.alert('Success', 'Form submitted successfully.');
       setAlesanInput('');
       setSelectedImage(null);
-    } catch (error) {
+    } catch (error:any) {
       console.error('Error submitting form:', error.response ? error.response.data : error.message); // Improved error logging
       Alert.alert('Error', 'Failed to submit form.');
     }
@@ -214,7 +296,7 @@ const HomePage: React.FC = () => {
         <Modal animationType='slide' transparent={true}visible={izinModal} onRequestClose={()=>setIzingModalVisible(!absenModal)}>
         <View className="p-3" style={styles.modalBackground} >
             <View className='bg-white p-5 w-[100%] rounded-md'>
-              <Text className="text-xl font-bold mb-5">Izin</Text>
+              <Text className="mb-5 text-xl font-bold">Izin</Text>
 
               <View className=''>
         <View className='flex flex-col gap-4'>
@@ -263,21 +345,8 @@ const HomePage: React.FC = () => {
       <View className="p-5 mx-5 mb-3 bg-white rounded-xl">
         <Text className="text-center text-[16px] font-bold">Presensi</Text>
         <Calendar
-          onDayPress={onDayPress}
-          markedDates={{
-            '2024-08-16': {
-              selected: true,
-              selectedColor: '#F2D437',
-              dotColor: 'red',
-              selectedTextColor: 'white',
-            },
-            '2024-08-17': {
-              selected: true,
-              selectedColor: '#159847',
-              dotColor: 'red',
-              selectedTextColor: 'white',
-            },
-          }}
+          onDayPress={(day) => console.log(day)}
+          markedDates={markedDates}
           theme={{
             calendarBackground: '#ffffff',
             textSectionTitleColor: '#b6c1cd',

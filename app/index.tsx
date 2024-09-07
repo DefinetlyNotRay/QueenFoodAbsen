@@ -28,11 +28,12 @@ const Login = () => {
   }, []);
   const handleLogin = async () => {
   try {
-    const response = await axios.post('https://3b8b-103-224-125-54.ngrok-free.app/login',{
+    const response = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/login',{
       username,password
     });
     if(response.data.success){
-            await AsyncStorage.setItem('authToken', response.data.token);
+      await AsyncStorage.setItem('authToken', response.data.token);
+      await AsyncStorage.setItem('userId', response.data.userId.toString());
 
       Alert.alert('Login Success', response.data.message);
       router.push('/HomePage');

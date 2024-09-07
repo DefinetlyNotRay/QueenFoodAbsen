@@ -25,14 +25,24 @@ const Sidenav: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
 
   const handleLogout = async () => {
     try {
+      await AsyncStorage.removeItem('level');
       await AsyncStorage.removeItem('authToken');
-      router.replace('/');
+    
+      const level = await AsyncStorage.getItem('level');
+      console.log('Level after logout:', level); // should be null
+  
+      console.log('Navigating to /');  // Make sure you log the correct path here
+      
+      router.replace('/');  // Ensure this points to the correct path (login page)
+    
       Alert.alert('Logged Out', 'You have been successfully logged out.');
     } catch (error) {
       console.error('Logout failed', error);
       Alert.alert('Error', 'Logout failed. Please try again.');
     }
   };
+  
+  
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -44,7 +54,7 @@ const Sidenav: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
     <Animated.View style={[animatedStyle, { position: 'absolute', top: 0, left: 0, height: '100%', width: 250, backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 10, zIndex: 1000 }]}>
       <View className="flex flex-col bg-white  justify-between pb-14 px-4 pt-10 h-[105vh]">
         <View>
-          <View className="flex flex-row justify-between items-center">
+          <View className="flex flex-row items-center justify-between">
             <Text className="text-xl font-bold">Queen Food</Text>
             <TouchableOpacity onPress={onClose}>
               <AntDesign name="close" size={20} color="black" />
@@ -52,10 +62,10 @@ const Sidenav: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
           </View>
 
           <TouchableOpacity onPress={onClose} className="mt-4">
-            <Link href="/HomePage" className="text-base font-bold">Home</Link>
+            <Link href="/HomePage" className="text-base">Home</Link>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} className="mt-4">
-            <Link href="/Izin" className="text-base">Izin</Link>
+            <Link href="/izin" className="text-base">Izin</Link>
           </TouchableOpacity>
         </View>
 
