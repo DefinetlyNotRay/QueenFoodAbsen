@@ -64,7 +64,7 @@ const HomePage: React.FC = () => {
         throw new Error('User ID not found in AsyncStorage');
       }
 
-      const response = await axios.get(`https://ec51-27-131-1-4.ngrok-free.app/attendance/${userId}`);
+      const response = await axios.get(`https://16c0-103-224-125-54.ngrok-free.app/attendance/${userId}`);
       const attendanceData = response.data;
 
       // Get today's date and start date (September 1st)
@@ -202,7 +202,7 @@ const HomePage: React.FC = () => {
   
       // Upload image to the backend
       console.log('Uploading image...');
-      const uploadResponse = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/upload-image', formData, {
+      const uploadResponse = await axios.post('https://16c0-103-224-125-54.ngrok-free.app/upload-image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 10000, // 10 seconds
 
@@ -213,7 +213,7 @@ const HomePage: React.FC = () => {
   
       // Send alasanInput and imageLink to your database
       console.log('Saving data...');
-      const saveResponse = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/save-data', {
+      const saveResponse = await axios.post('https://16c0-103-224-125-54.ngrok-free.app/save-data', {
         alasanInput,
         imageLink,
       });

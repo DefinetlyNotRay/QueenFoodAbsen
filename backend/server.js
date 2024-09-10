@@ -124,7 +124,7 @@ app.get('/employee-stats', async (req, res) => {
   const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in yyyy-mm-dd format
 
   const totalEmployeesQuery = 'SELECT COUNT(*) AS totalEmployees FROM user';
-  const attendedTodayQuery = 'SELECT COUNT(*) AS attendedToday FROM absen WHERE absen_time = ? AND status = "Hadir"';
+  const attendedTodayQuery = 'SELECT COUNT(*) AS attendedToday FROM absen WHERE absen_time = ? AND detail = "Hadir"';
   const izinTodayQuery = 'SELECT COUNT(*) AS izinToday FROM izin WHERE tanggal_izin = ?';
 
   try {
