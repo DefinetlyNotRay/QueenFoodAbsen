@@ -40,6 +40,7 @@ const _layout = () => {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="HomePage" options={{ headerShown: false }} />
       <Stack.Screen name="izin" options={{ headerShown: false }} />
+      <Stack.Screen name="AdminPage" options={{ headerShown: false }} />
 
 
     </Stack>

@@ -10,7 +10,7 @@ interface SidenavProps {
   onClose: () => void;
 }
 
-const Sidenav: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
+const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
   const translateX = useSharedValue(-300); // Initially off-screen
   const router = useRouter();
 
@@ -60,10 +60,10 @@ const Sidenav: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
           </View>
 
           <TouchableOpacity onPress={onClose} className="mt-4">
-            <Link href="/HomePage" className="text-base">Home</Link>
+            <Link href="/AdminPage" className="text-base">Home</Link>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} className="mt-4">
-            <Link href="/izin" className="text-base">Izin</Link>
+            <Link href="/IzinTable" className="text-base">Izin List</Link>
           </TouchableOpacity>
         </View>
 
@@ -75,4 +75,4 @@ const Sidenav: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
   );
 };
 
-export default Sidenav;
+export default SidenavAdmin;

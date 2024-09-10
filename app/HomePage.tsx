@@ -39,6 +39,10 @@ const HomePage: React.FC = () => {
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
+        const level = await AsyncStorage.getItem('level');
+        if(level === "admin"){
+          router.replace('/AdminPage');
+        }
         if (!token) {
           router.replace('/index');
         }

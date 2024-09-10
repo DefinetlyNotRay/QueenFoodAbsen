@@ -27,29 +27,43 @@ const Login = () => {
     checkAuth();
   }, []);
   const handleLogin = async () => {
-  try {
-    const response = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/login',{
-      username,password
-    });
-    if(response.data.success){
-      await AsyncStorage.setItem('authToken', response.data.token);
-      await AsyncStorage.setItem('userId', response.data.userId.toString());
-
-      Alert.alert('Login Success', response.data.message);
-      router.push('/HomePage');
-    } else {
-      Alert.alert('Login Failed', response.data.message);
+    try {
+      const response = await axios.post('https://ec51-27-131-1-4.ngrok-free.app/login', {
+        username,
+        password,
+      });
+  
+      if (response.data.success) {
+        await AsyncStorage.setItem('authToken', response.data.token);
+        await AsyncStorage.setItem('userId', response.data.userId.toString());
+  
+        // Check if level is defined before storing it
+        if (response.data.level) {
+          await AsyncStorage.setItem('level', response.data.level);
+        } else {
+          console.warn('Level is undefined or null');
+        }
+  
+        // Retrieve the level after setting it
+        const level = await AsyncStorage.getItem('level');
+        console.log(level);
+  
+        if (level === "admin") {
+          router.push('/AdminPage');
+        } else {
+          router.push('/HomePage');
+        }
+  
+        Alert.alert('Login Success', response.data.message);
+      } else {
+        Alert.alert('Login Failed', response.data.message);
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while logging in');
     }
-
-  } catch (error) {
-    console.error(error);
-    Alert.alert('Error', 'An error occurred while logging in');
-  }
-
-    // Handle login logic here
-    console.log('Username:', username);
-    console.log('Password:', password);
-  }
+  };
+  
   return (
     <View className='flex justify-center flex-col px-10 h-[100vh]'>
       <Text className='mb-6 text-xl font-extrabold text-black'>Queen Food's Sales App</Text>

@@ -108,11 +108,35 @@ app.post('/login', async (req, res) => {
 
     if (results.length > 0) {
       const user = results[0]; // Extract the first result as the user object
-      const token = jwt.sign({ userId: user.id_akun, username: user.username }, secretKey, { expiresIn: '100h' });
-      res.json({ success: true, token, userId: user.id_akun, message: 'Login Successful' });
+      console.log(user.level)
+      const token = jwt.sign({ userId: user.id_akun, username: user.username, level: user.level }, secretKey, { expiresIn: '100h' });
+      res.json({ success: true, token, userId: user.id_akun,level: user.level, message: 'Login Successful' });
     } else {
       res.json({ success: false, message: 'Invalid username or password' });
     }
+  } catch (err) {
+    console.error('Database Error:', err);
+    res.status(500).send('Server error');
+  }
+});
+
+app.get('/employee-stats', async (req, res) => {
+  const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in yyyy-mm-dd format
+
+  const totalEmployeesQuery = 'SELECT COUNT(*) AS totalEmployees FROM user';
+  const attendedTodayQuery = 'SELECT COUNT(*) AS attendedToday FROM absen WHERE absen_time = ? AND status = "Hadir"';
+  const izinTodayQuery = 'SELECT COUNT(*) AS izinToday FROM izin WHERE tanggal_izin = ?';
+
+  try {
+    const [totalEmployees] = await pool.query(totalEmployeesQuery);
+    const [attendedToday] = await pool.query(attendedTodayQuery, [currentDate]);
+    const [izinToday] = await pool.query(izinTodayQuery, [currentDate]);
+
+    res.json({
+      totalEmployees: totalEmployees[0].totalEmployees,
+      attendedToday: attendedToday[0].attendedToday,
+      izinToday: izinToday[0].izinToday
+    });
   } catch (err) {
     console.error('Database Error:', err);
     res.status(500).send('Server error');
