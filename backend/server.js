@@ -93,6 +93,17 @@ app.get('/attendance/:userId', async (req, res) => {
   }
 });
 
+app.get('/table-absen', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT a.id_absen,u.nama_karyawan,a.absen_time,a.pulang_time,a.detail FROM absen a JOIN user u ON a.id_akun = u.id_akun');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching attendance:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance data.' });
+  }
+});
+
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
