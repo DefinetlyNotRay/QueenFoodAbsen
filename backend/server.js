@@ -103,6 +103,20 @@ app.get('/table-absen', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch attendance data.' });
   }
 });
+app.get('/table-izin', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT i.id_izin, u.nama_karyawan, i.tanggal_izin, i.alasan ' +
+      'FROM izin i ' +
+      'JOIN user u ON i.id_akun = u.id_akun ' +
+      'WHERE DATE(i.tanggal_izin) = CURDATE()'
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching izin data:', error);
+    res.status(500).json({ error: 'Failed to fetch izin data.' });
+  }
+});
 
 
 app.post('/login', async (req, res) => {

@@ -21,7 +21,10 @@ const AdminPage: React.FC = () => {
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
   const [tableData, setTableData] = useState([['1', 'Alex', '01/09/24', "-", "Hadir"]]);
-  const tableHead = ['ID', 'Account', 'Tanggal', 'Absen Time', 'Pulang Time', 'Detail']; // Ensure you have a matching table head
+  const [tableIzinData, setIzinTableData] = useState([['1', 'Alex', 'a', "Approve"]]);
+
+  const tableHead = ['No', 'Account', 'Tanggal', 'Absen Time', 'Pulang Time', 'Detail']; // Ensure you have a matching table head
+  const izinTableHead = ['No', 'Nama', 'Alasan', 'Action']; // Ensure you have a matching table head
 
   const [filteredData, setFilteredData] = useState(tableData);
   const [open, setOpen] = useState(false);
@@ -29,6 +32,7 @@ const AdminPage: React.FC = () => {
   const [isFocus, setIsFocus] = useState(false);
 
   const items = [
+    { label: 'None', value: 'None' },
     { label: 'Hadir', value: 'Hadir' },
     { label: 'Sakit', value: 'Sakit' },
     { label: 'Izin', value: 'Izin' },
@@ -46,12 +50,75 @@ const AdminPage: React.FC = () => {
     const [day, month, year] = dateStr.split('/').map(Number);
     return new Date(`20${year}`, month - 1, day);
   };
-
   useEffect(() => {
     const getData = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch('https://9132-103-224-125-54.ngrok-free.app/table-absen', {
+        const response = await fetch('https://0ca6-103-224-125-54.ngrok-free.app/table-izin', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        if (!response.ok) {
+          Alert.alert('Error', 'Failed to fetch izin');
+          return;
+        }
+  
+        const data = await response.json();
+  
+        const formattedData = data.map(row => {
+
+  
+          return [
+            row.id_izin,
+            row.nama_karyawan,
+            row.alasan,
+            <View className="flex flex-col px-2 py-2 justify-center space-y-2">
+              <TouchableOpacity 
+                className="bg-[#228E47] p-1 rounded"
+                onPress={() => handleApprove(row.id_izin)}
+              >
+                <Text className="text-white text-center text-[10px]">Approve</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                className="bg-[#F23737] p-1 rounded"
+                onPress={() => handleReject(row.id_izin)}
+              >
+                <Text className="text-white text-center text-[10px]">Reject</Text>
+              </TouchableOpacity>
+            </View>
+     
+          ];
+        });
+  
+        setIzinTableData(formattedData);  // Save the entire data to tableData for later filtering
+      } catch (error) {
+        console.error('Failed to get izin:', error);
+      }
+    };
+  
+    getData();
+  }, []);
+  const handleApprove = (id_izin) => {
+    // Logic for approving the izin
+    console.log(`Approved izin with ID: ${id_izin}`);
+    // You can send a request to your server to update the status of the izin
+    // For example:
+    // fetch(`your-server-endpoint/approve/${id_izin}`, { method: 'POST' })
+  };
+  
+  const handleReject = (id_izin) => {
+    // Logic for rejecting the izin
+    console.log(`Rejected izin with ID: ${id_izin}`);
+    // You can send a request to your server to update the status of the izin
+    // For example:
+    // fetch(`your-server-endpoint/reject/${id_izin}`, { method: 'POST' })
+  };
+  
+  useEffect(() => {
+    const getData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const response = await fetch('https://0ca6-103-224-125-54.ngrok-free.app/table-absen', {
           headers: { Authorization: `Bearer ${token}` },
         });
   
@@ -78,7 +145,7 @@ const AdminPage: React.FC = () => {
           ];
         });
   
-        setTableData(formattedData);
+        setTableData(formattedData);  // Save the entire data to tableData for later filtering
       } catch (error) {
         console.error('Failed to get attendance:', error);
       }
@@ -86,6 +153,7 @@ const AdminPage: React.FC = () => {
   
     getData();
   }, []);
+  
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -110,7 +178,7 @@ const AdminPage: React.FC = () => {
     const getStats = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch('https://9132-103-224-125-54.ngrok-free.app/employee-stats', {
+        const response = await fetch('https://0ca6-103-224-125-54.ngrok-free.app/employee-stats', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -159,27 +227,35 @@ const AdminPage: React.FC = () => {
     const filterData = () => {
       const startDate = selectedDate1 ? parseDate(selectedDate1) : null;
       const endDate = selectedDate2 ? parseDate(selectedDate2) : null;
-
+  
       const filtered = tableData.filter(row => {
         const absenDate = parseDate(row[2]); // 'Tanggal' column
-        if (startDate && !endDate) {
-          // Filter by a single date
-          return absenDate.toDateString() === startDate.toDateString();
-        } else if (startDate && endDate) {
-          // Filter between two dates
-          return absenDate >= startDate && absenDate <= endDate;
-        }
-        return true;
+        const attendanceType = row[5]; // 'Detail' column where the attendance type is stored
+  
+        // If no date is selected, show today's records by default
+        const today = new Date();
+        const todayString = formatDate(today);
+        
+        const dateMatch = startDate && endDate 
+          ? absenDate >= startDate && absenDate <= endDate
+          : startDate && !endDate 
+          ? absenDate.toDateString() === startDate.toDateString()
+          : !selectedDate1 && !selectedDate2  // if no filter is applied, show today's records
+          ? row[2] === todayString
+          : true;
+  
+        const attendanceMatch = value && value !== 'None'
+          ? attendanceType === value
+          : true;
+  
+        return dateMatch && attendanceMatch;
       });
-
-      // Sort filtered data by date
-      filtered.sort((a, b) => parseDate(a[2]).getTime() - parseDate(b[2]).getTime());
-
+  
       setFilteredData(filtered);
     };
-
+  
     filterData();
-  }, [selectedDate1, selectedDate2, tableData]);
+  }, [selectedDate1, selectedDate2, value, tableData]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -214,6 +290,7 @@ const AdminPage: React.FC = () => {
         </View>
 
         <View className="mt-4">
+        <Text className='text-xl font-bold mb-2'>Absen</Text>
           <View className='flex flex-row gap-4'>
             <View>
               <Text className='mb-2'>Tanggal-1:</Text>
@@ -267,6 +344,13 @@ const AdminPage: React.FC = () => {
             <Table borderStyle={styles.border}>
               <Row data={tableHead} style={styles.tableHead} textStyle={styles.text} />
               <Rows data={filteredData} textStyle={styles.text} />
+            </Table>
+          </View>
+          <Text className='text-xl mt-2 font-semibold mb-2'>Izin</Text>
+          <View style={styles.tableContainer}>
+            <Table borderStyle={styles.border}>
+              <Row data={izinTableHead} style={styles.tableHead} textStyle={styles.text} />
+              <Rows data={tableIzinData} textStyle={styles.text} />
             </Table>
           </View>
         </View>
