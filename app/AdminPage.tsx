@@ -8,6 +8,8 @@ import { BlurView } from 'expo-blur';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Dropdown } from 'react-native-element-dropdown';
 import { Table, Row, Rows } from 'react-native-table-component';
+import { ScrollView } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 const AdminPage: React.FC = () => {
   const router = useRouter();
@@ -50,109 +52,115 @@ const AdminPage: React.FC = () => {
     const [day, month, year] = dateStr.split('/').map(Number);
     return new Date(`20${year}`, month - 1, day);
   };
-  useEffect(() => {
-    const getData = async () => {
-      try {
+useEffect(() => {
+    fetchData(); // Initial data fetch
+}, []);
+  const fetchData = async () => {
+    try {
         const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch('https://0ca6-103-224-125-54.ngrok-free.app/table-izin', {
-          headers: { Authorization: `Bearer ${token}` },
+        
+        // Fetch Izin Data
+        const izinResponse = await fetch('https://05da-103-224-125-54.ngrok-free.app/table-izin', {
+            headers: { Authorization: `Bearer ${token}` },
         });
-  
-        if (!response.ok) {
-          Alert.alert('Error', 'Failed to fetch izin');
-          return;
-        }
-  
-        const data = await response.json();
-  
-        const formattedData = data.map(row => {
 
-  
-          return [
-            row.id_izin,
+        if (!izinResponse.ok) {
+            Alert.alert('Error', 'Failed to fetch izin');
+            return;
+        }
+
+        const izinData = await izinResponse.json();
+        const formattedIzinData = izinData.map((row, index) => [
+            index + 1,
             row.nama_karyawan,
             row.alasan,
             <View className="flex flex-col px-2 py-2 justify-center space-y-2">
-              <TouchableOpacity 
-                className="bg-[#228E47] p-1 rounded"
-                onPress={() => handleApprove(row.id_izin)}
-              >
-                <Text className="text-white text-center text-[10px]">Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className="bg-[#F23737] p-1 rounded"
-                onPress={() => handleReject(row.id_izin)}
-              >
-                <Text className="text-white text-center text-[10px]">Reject</Text>
-              </TouchableOpacity>
+                <TouchableOpacity className="bg-[#228E47] p-1 rounded" onPress={() => handleApprove(row.id_izin)}>
+                    <Text className="text-white text-center text-[10px]">Approve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity className="bg-[#F23737] p-1 rounded" onPress={() => handleReject(row.id_izin)}>
+                    <Text className="text-white text-center text-[10px]">Reject</Text>
+                </TouchableOpacity>
             </View>
-     
-          ];
+        ]);
+
+        setIzinTableData(formattedIzinData);
+
+        // Fetch Attendance Data
+        const absenResponse = await fetch('https://05da-103-224-125-54.ngrok-free.app/table-absen', {
+            headers: { Authorization: `Bearer ${token}` },
         });
-  
-        setIzinTableData(formattedData);  // Save the entire data to tableData for later filtering
-      } catch (error) {
-        console.error('Failed to get izin:', error);
-      }
-    };
-  
-    getData();
-  }, []);
-  const handleApprove = (id_izin) => {
-    // Logic for approving the izin
-    console.log(`Approved izin with ID: ${id_izin}`);
-    // You can send a request to your server to update the status of the izin
-    // For example:
-    // fetch(`your-server-endpoint/approve/${id_izin}`, { method: 'POST' })
-  };
-  
-  const handleReject = (id_izin) => {
-    // Logic for rejecting the izin
-    console.log(`Rejected izin with ID: ${id_izin}`);
-    // You can send a request to your server to update the status of the izin
-    // For example:
-    // fetch(`your-server-endpoint/reject/${id_izin}`, { method: 'POST' })
-  };
-  
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch('https://0ca6-103-224-125-54.ngrok-free.app/table-absen', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-  
-        if (!response.ok) {
-          Alert.alert('Error', 'Failed to fetch attendance');
-          return;
+
+        if (!absenResponse.ok) {
+            Alert.alert('Error', 'Failed to fetch attendance');
+            return;
         }
-  
-        const data = await response.json();
-  
-        const formattedData = data.map(row => {
-          const absenTime = new Date(row.absen_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const absenDate = new Date(row.absen_time);
-          const formattedDate = formatDate(absenDate);
-          const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
-          return [
-            row.id_absen,
-            row.nama_karyawan,
-            formattedDate,
-            absenTime,
-            pulangTime,
-            row.detail
-          ];
+
+        const absenData = await absenResponse.json();
+        const formattedAbsenData = absenData.map((row, index) => {
+            const absenTime = new Date(row.absen_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const absenDate = new Date(row.absen_time);
+            const formattedDate = formatDate(absenDate);
+            const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return [
+                index,
+                row.nama_karyawan,
+                formattedDate,
+                absenTime,
+                pulangTime,
+                row.detail,
+            ];
         });
+
+        setTableData(formattedAbsenData);
+
+    } catch (error) {
+        console.error('Failed to fetch data:', error);
+    }
+};
   
-        setTableData(formattedData);  // Save the entire data to tableData for later filtering
-      } catch (error) {
-        console.error('Failed to get attendance:', error);
-      }
-    };
+  const handleApprove = async (id_izin) => {
+    const token = await AsyncStorage.getItem('authToken');
+
+    const response = await fetch(`https://05da-103-224-125-54.ngrok-free.app/accept-status/`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json' // Specify content type
+        },
+        body: JSON.stringify({ id_izin }) // Send id_izin in the body
+    });
+
+    if (!response.ok) {
+        Alert.alert('Error', 'Failed to approve izin');
+        return;
+    }
+
+    fetchData();
+};
+
+const handleReject = async (id_izin) => {
+    const token = await AsyncStorage.getItem('authToken');
+
+    const response = await fetch(`https://05da-103-224-125-54.ngrok-free.app/reject-status/`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json' // Specify content type
+        },
+        body: JSON.stringify({ id_izin }) // Send id_izin in the body
+    });
+
+    if (!response.ok) {
+        Alert.alert('Error', 'Failed to reject izin');
+        return;
+    }
+
+    fetchData();
+};
+
   
-    getData();
-  }, []);
+  
   
 
   useEffect(() => {
@@ -178,7 +186,7 @@ const AdminPage: React.FC = () => {
     const getStats = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
-        const response = await fetch('https://0ca6-103-224-125-54.ngrok-free.app/employee-stats', {
+        const response = await fetch('https://05da-103-224-125-54.ngrok-free.app/employee-stats', {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -341,17 +349,32 @@ const AdminPage: React.FC = () => {
             </View>
           </View>
           <View style={styles.tableContainer}>
+          <ScrollView style={{ maxHeight: 160 }}> 
+
             <Table borderStyle={styles.border}>
               <Row data={tableHead} style={styles.tableHead} textStyle={styles.text} />
-              <Rows data={filteredData} textStyle={styles.text} />
+              {filteredData.length > 0 ? (
+                  <Rows data={filteredData} textStyle={styles.text} />
+                ) : (
+                  <Row data={['No data yet']} textStyle={styles.text} />
+              )}
             </Table>
+          </ScrollView>
+
           </View>
           <Text className='text-xl mt-2 font-semibold mb-2'>Izin</Text>
-          <View style={styles.tableContainer}>
-            <Table borderStyle={styles.border}>
-              <Row data={izinTableHead} style={styles.tableHead} textStyle={styles.text} />
-              <Rows data={tableIzinData} textStyle={styles.text} />
-            </Table>
+          <View style={styles.tableContainer} >
+            <ScrollView style={{ maxHeight: 280 }}> 
+              <Table borderStyle={styles.border}>
+                <Row data={izinTableHead} style={styles.tableHead} textStyle={styles.text} />
+                {tableIzinData.length > 0 ? (
+                  <Rows data={tableIzinData} textStyle={styles.text} />
+                ) : (
+                  <Row data={['No data yet']} style={styles.tableRow} textStyle={styles.text} />
+                  
+                )}
+              </Table>
+            </ScrollView>
           </View>
         </View>
       </View>

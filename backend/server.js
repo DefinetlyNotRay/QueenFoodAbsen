@@ -78,6 +78,58 @@ app.post('/generate-upload-url', (req, res) => {
   res.json({ uploadURL });
 });
 
+app.post('/accept-status/', async (req, res) => {
+  const { id_izin } = req.body;
+
+  if (!id_izin) {
+      return res.status(400).json({ error: 'Missing id_izin' });
+  }
+
+  try {
+      const update = 'UPDATE izin SET status = ? WHERE id_izin = ?';
+      const values = ["Approved", id_izin];
+      
+      const [result] = await pool.query(update, values);
+
+      if (result.affectedRows > 0) {
+          console.log(`Status updated to "Approved" for id_izin: ${id_izin}`); // Log successful update
+          return res.status(200).json({ message: 'Status updated to Accepted successfully' });
+      } else {
+          return res.status(404).json({ error: 'Record not found' });
+      }
+  } catch (error) {
+      console.error('Error updating status:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/reject-status/', async (req, res) => {
+  const { id_izin } = req.body;
+
+  if (!id_izin) {
+      return res.status(400).json({ error: 'Missing id_izin' });
+  }
+
+  try {
+      const update = 'UPDATE izin SET status = ? WHERE id_izin = ?';
+      const values = ["Rejected", id_izin];
+      
+      const [result] = await pool.query(update, values);
+
+      if (result.affectedRows > 0) {
+          console.log(`Status updated to "Rejected" for id_izin: ${id_izin}`); // Log successful update
+          return res.status(200).json({ message: 'Status updated to Rejected successfully' });
+      } else {
+          return res.status(404).json({ error: 'Record not found' });
+      }
+  } catch (error) {
+      console.error('Error updating status:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
 app.get('/attendance/:userId', async (req, res) => {
   const { userId } = req.params;
 
@@ -109,7 +161,7 @@ app.get('/table-izin', async (req, res) => {
       'SELECT i.id_izin, u.nama_karyawan, i.tanggal_izin, i.alasan ' +
       'FROM izin i ' +
       'JOIN user u ON i.id_akun = u.id_akun ' +
-      'WHERE DATE(i.tanggal_izin) = CURDATE()'
+      'WHERE DATE(i.tanggal_izin) = CURDATE() AND i.status = "Pending"'
     );
     res.json(rows);
   } catch (error) {
@@ -149,7 +201,7 @@ app.get('/employee-stats', async (req, res) => {
   const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in yyyy-mm-dd format
 
   const totalEmployeesQuery = 'SELECT COUNT(*) AS totalEmployees FROM user';
-  const attendedTodayQuery = 'SELECT COUNT(*) AS attendedToday FROM absen WHERE absen_time = ? AND detail = "Hadir"';
+  const attendedTodayQuery = 'SELECT COUNT(*) AS attendedToday FROM absen WHERE tanggal_absen = ? AND detail = "Hadir"';
   const izinTodayQuery = 'SELECT COUNT(*) AS izinToday FROM izin WHERE tanggal_izin = ?';
 
   try {
