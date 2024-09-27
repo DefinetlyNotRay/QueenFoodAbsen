@@ -15,7 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Sidenav from "../components/Sidenav";
 import { BlurView } from "expo-blur";
 import { Calendar, CalendarProps } from "react-native-calendars";
-import { RNCamera } from "react-native-camera"; // Import RNCamera
+import { Dropdown } from "react-native-element-dropdown";
 import * as ImagePicker from "expo-image-picker"; // Import the ImagePicker
 import axios from "axios";
 import * as Location from "expo-location";
@@ -29,7 +29,7 @@ const HomePage: React.FC = () => {
   const [selectedImageAbsen, setSelectedImageAbsen] = useState<string | null>(
     null
   ); // State to store the selected image URI
-  const [imageUrl, setImageUrl] = useState("");
+
   const statusColors = {
     Hadir: "#159847",
     Libur: "#F2D437",
@@ -37,16 +37,115 @@ const HomePage: React.FC = () => {
     Sakit: "#B0AF9F",
     Alpha: "#6F6262",
   };
+  const items = [
+    { label: "Sakit", value: "Sakit" },
+    { label: "Izin", value: "Izin" },
+  ];
   const router = useRouter();
   const [absenModal, setAbsenModalVisible] = useState(false);
   const [locationModal, setLoactionModal] = useState(false);
   const [izinModal, setIzingModalVisible] = useState(false);
   const [alasanInput, setAlesanInput] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null); // State to store the selected image URI
+  const [etalaseImage, setEtalaseImage] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [etalaseUrl, setEtalaseUrl] = useState("");
   const [location, setLocation] = useState<Location.LocationObject | null>(
     null
   );
+  const [isFocus, setIsFocus] = useState(false);
+  const [value, setValue] = useState("");
 
+  const [etelaseModal, setEtelaseModal] = useState(false);
+
+  const [hasIzinToday, setHasIzinToday] = useState(false);
+
+  const [hasAttendedToday, setHasAttendedToday] = useState(false);
+  const [hasGoneHome, setHasGoneHome] = useState(false);
+
+  useEffect(() => {
+    checkAttendance();
+    checkHome();
+  }, []);
+
+  const checkAttendance = async () => {
+    try {
+      // Get the user ID from AsyncStorage or other storage method
+      const userId = await AsyncStorage.getItem("userId");
+
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      // Fetch attendance data for today
+      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const response = await axios.get(
+        `https://459a-27-131-1-4.ngrok-free.app/checkAttendance?userId=${userId}&date=${today}`
+      );
+
+      // Check if the user has attended today
+      if (response.data.hasAttended) {
+        setHasAttendedToday(true);
+      } else {
+        setHasAttendedToday(false);
+      }
+    } catch (error) {
+      console.error("Error checking attendance:", error);
+      Alert.alert("Error", "Failed to check attendance.");
+    }
+  };
+  const checkHome = async () => {
+    try {
+      // Get the user ID from AsyncStorage or other storage method
+      const userId = await AsyncStorage.getItem("userId");
+
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      // Fetch attendance data for today
+      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const response = await axios.get(
+        `https://459a-27-131-1-4.ngrok-free.app/checkHome?userId=${userId}&date=${today}`
+      );
+
+      // Check if the user has attended today
+      if (response.data.hasAttended) {
+        setHasGoneHome(true);
+      } else {
+        setHasGoneHome(false);
+      }
+    } catch (error) {
+      console.error("Error checking attendance:", error);
+      Alert.alert("Error", "Failed to check attendance.");
+    }
+  };
+  const checkIzin = async () => {
+    try {
+      // Get the user ID from AsyncStorage or other storage method
+      const userId = await AsyncStorage.getItem("userId");
+
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      // Fetch attendance data for today
+      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const response = await axios.get(
+        `https://459a-27-131-1-4.ngrok-free.app/checkIzin?userId=${userId}&date=${today}`
+      );
+
+      // Check if the user has attended today
+      if (response.data.hasAttended) {
+        setHasIzinToday(true);
+      } else {
+        setHasIzinToday(false);
+      }
+    } catch (error) {
+      console.error("Error checking attendance:", error);
+      Alert.alert("Error", "Failed to check attendance.");
+    }
+  };
   const getLocationData = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -55,6 +154,12 @@ const HomePage: React.FC = () => {
     }
     let currentLocation = await Location.getCurrentPositionAsync({});
     setLocation(currentLocation);
+    setTimeout(() => {
+      // Close the first modal
+      setLoactionModal(false);
+      // Open the second modal
+      setEtelaseModal(true);
+    }, 1000);
     Alert.alert(
       "Location Retrieved",
       `Latitude: ${currentLocation.coords.latitude}, Longitude: ${currentLocation.coords.longitude}`
@@ -80,12 +185,142 @@ const HomePage: React.FC = () => {
       console.log("Camera error: ", result.error);
     }
   };
+  const takeEtalase = async () => {
+    console.log("Taking photo...");
 
+    const options = {
+      mediaType: "photo",
+      includeBase64: true,
+      quality: 0.5,
+    };
+
+    const result = await ImagePicker.launchCameraAsync(options);
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0]; // Get the first asset
+      setEtalaseImage(asset.uri); // Now asset is of type ImagePicker.ImagePickerAsset
+      await handleEtalaseUpload(asset.uri); // Call handleUpload with the image URI
+    } else {
+      console.log("Camera error: ", result.error);
+    }
+  };
   const handleUpload = async (imageUri: string) => {
     const imageUrl = await uploadImageToCloudinary(imageUri);
     console.log("Image URL:", imageUrl);
   };
+  const handleEtalaseUpload = async (imageUri: string) => {
+    const imageUrl = await uploadEtalaseToCloudinary(imageUri);
+    console.log("Image URL:", imageUrl);
+  };
 
+  const getAddressFromCoordinates = async (latitude: any, longitude: any) => {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`;
+
+    try {
+      const response = await axios.get(url);
+      return response.data.display_name || "Address not found";
+    } catch (error) {
+      console.error("Error fetching address:", error);
+      return "Error fetching address";
+    }
+  };
+  const createAbsen = async () => {
+    try {
+      // Get the user ID from AsyncStorage
+      const userId = await AsyncStorage.getItem("userId");
+
+      if (!userId) {
+        throw new Error("User ID not found in AsyncStorage");
+      }
+      console.log(
+        "image " + imageUrl + "etalase " + etalaseUrl + "location " + location
+      );
+      // Ensure both image URLs and location are available
+      if (!imageUrl || !etalaseUrl || !location) {
+        Alert.alert(
+          "Error",
+          "Please capture the images and retrieve location."
+        );
+        return;
+      }
+      // Extract latitude and longitude from location
+      const { latitude, longitude } = location.coords;
+
+      // Get the address from latitude and longitude
+      const address = await getAddressFromCoordinates(latitude, longitude);
+      // Prepare the data to be sent
+      const absenData = {
+        userId,
+        imageUrl,
+        etalaseUrl,
+        location: {
+          latitude,
+          longitude,
+          address, // Include the address in the location data
+        },
+      };
+
+      // Send the data to your backend
+      const response = await axios.post(
+        `https://459a-27-131-1-4.ngrok-free.app/createAbsen`,
+        absenData
+      );
+
+      if (response.status === 200) {
+        Alert.alert("Success", "Absen created successfully.");
+        // Assuming today is the date you want to mark
+        const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+
+        // Update the marked dates after successful upload
+        setMarkedDates((prevDates) => ({
+          ...prevDates,
+          [today]: {
+            selected: true,
+            selectedColor: statusColors["Hadir"],
+            selectedTextColor: "white",
+          },
+        }));
+        setLocation(null);
+        setImageUrl("");
+        setEtalaseImage(null);
+      }
+    } catch (error) {
+      console.error("Error creating absen:", error);
+      Alert.alert("Error", "Failed to create absen.");
+    }
+  };
+
+  const uploadEtalaseToCloudinary = async (imageUri: String) => {
+    const userId = await AsyncStorage.getItem("userId");
+    const formData = new FormData();
+    formData.append("file", {
+      uri: imageUri,
+      type: "image/jpeg", // or the appropriate type for your image
+      name: `${userId}.jpg`,
+    });
+    formData.append("upload_preset", "my_upload_preset"); // Set your upload preset
+
+    try {
+      const response = await axios.post(
+        "https://api.cloudinary.com/v1_1/dezla8wit/image/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      Alert.alert("Success", "Image Successfully Uploaded.");
+
+      setEtalaseUrl(response.data.secure_url);
+      setEtelaseModal(false);
+      createAbsen();
+      return response.data.secure_url;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  };
   const uploadImageToCloudinary = async (imageUri: String) => {
     const userId = await AsyncStorage.getItem("userId");
     const formData = new FormData();
@@ -109,11 +344,41 @@ const HomePage: React.FC = () => {
       setImageUrl(response.data.secure_url);
       setTimeout(() => {
         // Close the first modal
+        Alert.alert("Success", "Image Successfully Uploaded.");
+
         setAbsenModalVisible(false);
+
         // Open the second modal
         setLoactionModal(true);
       }, 1000); // Simulating a 1-second delay for photo upload
       return response.data.secure_url;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  };
+
+  const uploadIzinImageToCloudinary = async (imageUri: String) => {
+    const userId = await AsyncStorage.getItem("userId");
+    const formData = new FormData();
+    formData.append("file", {
+      uri: imageUri,
+      type: "image/jpeg", // or the appropriate type for your image
+      name: `${userId}.jpg`,
+    });
+    formData.append("upload_preset", "my_upload_preset"); // Set your upload preset
+
+    try {
+      const response = await axios.post(
+        "https://api.cloudinary.com/v1_1/dezla8wit/image/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data.secure_url; // Return the Cloudinary URL
     } catch (error) {
       console.error("Error uploading image:", error);
       throw error;
@@ -149,7 +414,7 @@ const HomePage: React.FC = () => {
         }
 
         const response = await axios.get(
-          `https://305c-27-131-1-4.ngrok-free.app/attendance/${userId}`
+          `https://459a-27-131-1-4.ngrok-free.app/attendance/${userId}`
         );
         const attendanceData = response.data;
 
@@ -228,64 +493,104 @@ const HomePage: React.FC = () => {
       setSelectedImage(result.assets[0].uri);
     }
   };
-  const convertToBlob = async (uri: string): Promise<Blob> => {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return blob;
-  };
 
   const submitForm = async () => {
-    if (!alasanInput || !selectedImage) {
-      Alert.alert("Error", "Please fill in all fields and select an image.");
-      return;
-    }
-
     try {
-      // Convert image URI to Blob
-      const imageBlob = await convertToBlob(selectedImage);
-      console.log("Image Blob:", imageBlob); // Debugging line
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found in AsyncStorage");
+      }
 
-      // Create FormData
-      const formData = new FormData();
-      formData.append("image", imageBlob, "photo.jpg"); // 'photo.jpg' is the file name
+      if (!alasanInput || !selectedImage) {
+        Alert.alert("Error", "Please fill in all fields and select an image.");
+        return;
+      }
 
-      // Upload image to the backend
-      console.log("Uploading image...");
-      const uploadResponse = await axios.post(
-        "https://305c-27-131-1-4.ngrok-free.app/upload-image",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          timeout: 10000, // 10 seconds
-        }
-      );
-      console.log("Upload Response:", uploadResponse.data); // Debugging line
+      // Debugging log before the image upload
+      console.log("Uploading image to Cloudinary...");
 
-      const imageLink = uploadResponse.data.imageUrl;
+      // Upload image to Cloudinary first
+      const imageLink = await uploadIzinImageToCloudinary(selectedImage);
+      console.log("Image uploaded to Cloudinary:", imageLink);
 
-      // Send alasanInput and imageLink to your database
+      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+
+      // Send alasanInput and imageLink to your backend
       console.log("Saving data...");
       const saveResponse = await axios.post(
-        "https://305c-27-131-1-4.ngrok-free.app/save-data",
+        `https://459a-27-131-1-4.ngrok-free.app/uploadIzin?userId=${userId}&date=${today}`,
         {
           alasanInput,
           imageLink,
+          value,
         }
       );
       console.log("Save Response:", saveResponse.data); // Debugging line
 
-      Alert.alert("Success", "Form submitted successfully.");
+      // Update the marked dates after successful upload
+      setMarkedDates((prevDates) => ({
+        ...prevDates,
+        [today]: {
+          selected: true,
+          selectedColor: statusColors[value as keyof typeof statusColors],
+          selectedTextColor: "white",
+        },
+      }));
+
+      // Reset the form fields after successful submission
       setAlesanInput("");
       setSelectedImage(null);
+      setValue("");
+      setIzingModalVisible(false);
+
+      // Log success and show alert
+      console.log("Form submission successful. Showing alert.");
+      Alert.alert("Success", "Form submitted successfully.");
     } catch (error: any) {
       console.error(
         "Error submitting form:",
         error.response ? error.response.data : error.message
-      ); // Improved error logging
+      );
+
+      // Show an alert if an error occurs
       Alert.alert("Error", "Failed to submit form.");
     }
   };
 
+  const absenPulang = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found in AsyncStorage");
+      }
+
+      // Confirm action
+      Alert.alert("Confirm", "Are you sure?", [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "OK",
+          onPress: async () => {
+            // Proceed with the API call if confirmed
+            const response = await axios.post(
+              `https://459a-27-131-1-4.ngrok-free.app/absen-pulang/${userId}`
+            );
+
+            console.log("Absen Pulang Response:", response.data); // Debugging line
+            Alert.alert("Success", response.data.message);
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error("Error during absen pulang:", error);
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to mark attendance."
+      );
+    }
+  };
   return (
     <View style={{ flex: 1 }}>
       <Header onToggleSidenav={toggleSidenav} />
@@ -321,6 +626,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             className="bg-[#159847] w-[160px] rounded-md py-3 px-1"
             onPress={() => setAbsenModalVisible(true)}
+            disabled={hasAttendedToday} // Disable button if the user has attended today
           >
             <Text className="font-bold text-center text-white">
               Absen Masuk
@@ -366,17 +672,32 @@ const HomePage: React.FC = () => {
                 >
                   <Text style={styles.textStyle}>Send Location</Text>
                 </TouchableOpacity>
-
+              </View>
+            </View>
+          </Modal>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={etelaseModal}
+            onRequestClose={() => setEtelaseModal(!etelaseModal)}
+          >
+            <View style={styles.modalBackground}>
+              <View style={styles.modalView}>
+                <Text>Send Display Photo</Text>
                 <TouchableOpacity
                   style={styles.closeButton}
-                  onPress={() => setLoactionModal(!locationModal)}
+                  onPress={takeEtalase}
                 >
-                  <Text style={styles.textStyle}>Hide Modal</Text>
+                  <Text style={styles.textStyle}>Send Display Photo</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </Modal>
-          <TouchableOpacity className="bg-[#F23737] w-[160px] rounded-md py-3 px-1">
+          <TouchableOpacity
+            className="bg-[#F23737] w-[160px] rounded-md py-3 px-1"
+            onPress={absenPulang}
+            disabled={hasGoneHome} // Disable button if the user has gone home today
+          >
             <Text className="font-bold text-center text-white">
               Absen Pulang
             </Text>
@@ -384,6 +705,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             className="bg-[#00CABE] w-[160px] rounded-md py-3 px-1"
             onPress={() => setIzingModalVisible(true)}
+            // disabled={hasAttendedToday || hasIzinToday}
           >
             <Text className="font-bold text-center text-white">Izin</Text>
           </TouchableOpacity>
@@ -411,7 +733,43 @@ const HomePage: React.FC = () => {
                         }
                       />
                     </View>
-                    <View>
+
+                    <Text className="mb-2 font-extrabold">Type</Text>
+                    <View className="justify-center flex-1 mb-5">
+                      <Dropdown
+                        style={{
+                          height: 40,
+                          borderColor: "gray",
+                          borderWidth: 1,
+                          borderRadius: 1,
+                          paddingHorizontal: 8,
+                        }}
+                        placeholderStyle={{
+                          fontSize: 14,
+                          color: "gray",
+                        }}
+                        selectedTextStyle={{
+                          fontSize: 14,
+                        }}
+                        containerStyle={{
+                          backgroundColor: "white",
+                          borderRadius: 5,
+                        }}
+                        data={items}
+                        maxHeight={200}
+                        labelField="label"
+                        valueField="value"
+                        placeholder={!isFocus ? "Select an option..." : "..."}
+                        value={value}
+                        onFocus={() => setIsFocus(true)}
+                        onBlur={() => setIsFocus(false)}
+                        onChange={(item) => {
+                          setValue(item.value);
+                          setIsFocus(false);
+                        }}
+                      />
+                    </View>
+                    <View className="">
                       <Text className="font-extrabold">Lampiran</Text>
                       <TouchableOpacity
                         className="border "

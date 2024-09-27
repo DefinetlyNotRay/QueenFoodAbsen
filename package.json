@@ -25,6 +25,7 @@
     "expo-camera": "~15.0.16",
     "expo-image-manipulator": "~12.0.5",
     "expo-image-picker": "~15.0.7",
+    "expo-location": "~17.0.1",
     "expo-permissions": "^14.4.0",
     "expo-router": "~3.5.23",
     "expo-status-bar": "~1.12.1",
@@ -47,12 +48,12 @@
     "react-native-permissions": "^4.1.5",
     "react-native-picker-select": "^9.3.1",
     "react-native-reanimated": "~3.10.1",
-    "react-native-table-component": "^1.2.2",
-    "expo-location": "~17.0.1"
+    "react-native-table-component": "^1.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@types/react": "~18.2.45",
+    "@types/react-native-table-component": "^1.2.8",
     "tailwindcss": "^3.3.2",
     "typescript": "^5.1.3"
   },
