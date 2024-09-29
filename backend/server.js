@@ -35,11 +35,13 @@ const pool = mysql.createPool({
   database: "queenfood", // Replace with your MySQL database name
 });
 
-// Function to add "Alpha" entries if missing
 const checkAndAddAlphaEntries = async () => {
   try {
     // Get all users
-    const [users] = await pool.query("SELECT id_akun FROM users");
+    const [users] = await pool.query(
+      "SELECT id_akun FROM user WHERE level = 'user'"
+    );
+    console.log("Total users fetched:", users.length);
 
     const today = new Date();
     const yesterday = new Date();
@@ -48,22 +50,36 @@ const checkAndAddAlphaEntries = async () => {
 
     for (const user of users) {
       const { id_akun } = user;
+      console.log(`Checking user: ${id_akun}`);
 
       // Check if there's an entry for yesterday
       const [rows] = await pool.query(
-        "SELECT * FROM absen WHERE id_akun = ? AND DATE(absen_time) = ?",
+        "SELECT * FROM absen WHERE id_akun = ? AND DATE(tanggal_absen) = ?",
         [id_akun, yesterdayDateString]
       );
 
       if (rows.length === 0) {
-        // No entry found for yesterday, insert "Alpha" entry
-        await pool.query(
-          'INSERT INTO absen (id_akun, absen_time, detail) VALUES (?, NOW(), "Alpha")',
+        console.log(
+          `No entry found for user ${id_akun}, adding Alpha entry...`
+        );
+
+        const detail_absen = await pool.query(
+          "INSERT INTO detail_absen (id_akun, foto_diri, foto_etalase, id_izin) VALUES (?, NULL, NULL, NULL)",
           [id_akun]
+        );
+        console.log("Detail absent insert result:", detail_absen); // Log the result
+        const id_detail = detail_absen.insertId; // Get the id of the inserted row
+        console.log("Inserted detail ID:", id_detail);
+
+        await pool.query(
+          'INSERT INTO absen (id_akun, tanggal_absen, absen_time, pulang_time, detail, id_detail) VALUES (?, CURDATE(), NULL, NULL, "Alpha", ?)',
+          [id_akun, id_detail]
         );
         console.log(
           `Alpha entry added for user ${id_akun} on ${yesterdayDateString}`
         );
+      } else {
+        console.log(`User ${id_akun} already has an entry for yesterday.`);
       }
     }
   } catch (error) {
@@ -73,6 +89,9 @@ const checkAndAddAlphaEntries = async () => {
 
 // Schedule the job to run every day at midnight
 cron.schedule("0 0 * * *", checkAndAddAlphaEntries); // Runs at 00:00 (midnight)
+
+// Call the function for testing
+checkAndAddAlphaEntries();
 
 app.post("/generate-upload-url", (req, res) => {
   const uploadURL = "Your generated UploadThing URL here"; // Replace with actual code to generate the URL
@@ -356,6 +375,18 @@ app.get("/checkAttendance", async (req, res) => {
   }
 });
 
+app.get("/table-izin-karyawan/:userId", async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const [rows] = await pool.query(
+      `SELECT tanggal_izin ,alasan,foto,tipe,status FROM izin WHERE id_akun = ${userId} ORDER BY id_izin DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching attendance:", error);
+    res.status(500).json({ error: "Failed to fetch attendance data." });
+  }
+});
 app.get("/checkHome", async (req, res) => {
   const { userId, date } = req.query;
 

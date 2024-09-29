@@ -66,6 +66,19 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     checkAttendance();
     checkHome();
+    checkIzin();
+  }, []);
+  const [isLoading, setIsLoading] = useState(true); // Tambahkan state loading
+
+  useEffect(() => {
+    const loadData = async () => {
+      await checkAttendance();
+      await checkHome();
+      await checkIzin();
+      setIsLoading(false); // Set loading false setelah semua data diambil
+    };
+
+    loadData();
   }, []);
 
   const checkAttendance = async () => {
@@ -205,12 +218,14 @@ const HomePage: React.FC = () => {
     }
   };
   const handleUpload = async (imageUri: string) => {
-    const imageUrl = await uploadImageToCloudinary(imageUri);
-    console.log("Image URL:", imageUrl);
-  };
-  const handleEtalaseUpload = async (imageUri: string) => {
-    const imageUrl = await uploadEtalaseToCloudinary(imageUri);
-    console.log("Image URL:", imageUrl);
+    try {
+      const imageUrl = await uploadImageToCloudinary(imageUri);
+      console.log("Image URL:", imageUrl);
+      setImageUrl(imageUrl);
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+      Alert.alert("Error", "Failed to upload image.");
+    }
   };
 
   const getAddressFromCoordinates = async (latitude: any, longitude: any) => {
@@ -224,7 +239,15 @@ const HomePage: React.FC = () => {
       return "Error fetching address";
     }
   };
-  const createAbsen = async () => {
+  useEffect(() => {
+    console.log("Updated etalaseUrl state:", etalaseUrl);
+  }, [etalaseUrl]); // This will run every time etalaseUrl changes
+
+  const createAbsen = async (etalaseUrl: string) => {
+    if (isLoading) {
+      Alert.alert("Loading", "Please wait until all data is loaded.");
+      return; // Cegah tindakan jika masih loading
+    }
     try {
       // Get the user ID from AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
@@ -233,10 +256,19 @@ const HomePage: React.FC = () => {
         throw new Error("User ID not found in AsyncStorage");
       }
       console.log(
-        "image " + imageUrl + "etalase " + etalaseUrl + "location " + location
+        "image " + imageUrl + " etalase " + etalaseUrl + " location " + location
       );
+
       // Ensure both image URLs and location are available
       if (!imageUrl || !etalaseUrl || !location) {
+        console.log(
+          "image " +
+            imageUrl +
+            " etalase " +
+            etalaseUrl +
+            " location " +
+            location
+        );
         Alert.alert(
           "Error",
           "Please capture the images and retrieve location."
@@ -282,25 +314,39 @@ const HomePage: React.FC = () => {
         }));
         setLocation(null);
         setImageUrl("");
-        setEtalaseImage(null);
+        setEtalaseUrl("");
+        checkAttendance();
+        checkHome();
       }
     } catch (error) {
       console.error("Error creating absen:", error);
       Alert.alert("Error", "Failed to create absen.");
     }
   };
-
+  const handleEtalaseUpload = async (imageUri: string) => {
+    try {
+      const imageUrl = await uploadEtalaseToCloudinary(imageUri);
+      setEtalaseUrl(imageUrl);
+      createAbsen(imageUrl);
+    } catch (error) {
+      console.error("Failed to upload etalase image:", error);
+      Alert.alert("Error", "Failed to upload etalase image.");
+    }
+  };
   const uploadEtalaseToCloudinary = async (imageUri: String) => {
     const userId = await AsyncStorage.getItem("userId");
+    console.log("User ID:", userId);
+
     const formData = new FormData();
     formData.append("file", {
       uri: imageUri,
-      type: "image/jpeg", // or the appropriate type for your image
+      type: "image/jpeg",
       name: `${userId}.jpg`,
     });
-    formData.append("upload_preset", "my_upload_preset"); // Set your upload preset
+    formData.append("upload_preset", "my_upload_preset");
 
     try {
+      console.log("Image URI to upload:", imageUri);
       const response = await axios.post(
         "https://api.cloudinary.com/v1_1/dezla8wit/image/upload",
         formData,
@@ -310,17 +356,19 @@ const HomePage: React.FC = () => {
           },
         }
       );
-      Alert.alert("Success", "Image Successfully Uploaded.");
 
-      setEtalaseUrl(response.data.secure_url);
       setEtelaseModal(false);
-      createAbsen();
       return response.data.secure_url;
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error(
+        "Error uploading image:",
+        error.response?.data || error.message
+      );
+      Alert.alert("Upload Error", "Failed to upload image. Please try again.");
       throw error;
     }
   };
+
   const uploadImageToCloudinary = async (imageUri: String) => {
     const userId = await AsyncStorage.getItem("userId");
     const formData = new FormData();
@@ -341,15 +389,14 @@ const HomePage: React.FC = () => {
           },
         }
       );
-      setImageUrl(response.data.secure_url);
       setTimeout(() => {
         // Close the first modal
-        Alert.alert("Success", "Image Successfully Uploaded.");
 
         setAbsenModalVisible(false);
 
         // Open the second modal
         setLoactionModal(true);
+        Alert.alert("Success", "Image Successfully Uploaded.");
       }, 1000); // Simulating a 1-second delay for photo upload
       return response.data.secure_url;
     } catch (error) {
@@ -626,7 +673,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             className="bg-[#159847] w-[160px] rounded-md py-3 px-1"
             onPress={() => setAbsenModalVisible(true)}
-            disabled={hasAttendedToday} // Disable button if the user has attended today
+            disabled={hasAttendedToday || hasIzinToday} // Disable button if the user has attended today
           >
             <Text className="font-bold text-center text-white">
               Absen Masuk
@@ -696,7 +743,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             className="bg-[#F23737] w-[160px] rounded-md py-3 px-1"
             onPress={absenPulang}
-            disabled={hasGoneHome} // Disable button if the user has gone home today
+            disabled={hasGoneHome || hasIzinToday} // Disable button if the user has gone home today
           >
             <Text className="font-bold text-center text-white">
               Absen Pulang
@@ -705,7 +752,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             className="bg-[#00CABE] w-[160px] rounded-md py-3 px-1"
             onPress={() => setIzingModalVisible(true)}
-            // disabled={hasAttendedToday || hasIzinToday}
+            disabled={hasAttendedToday || hasIzinToday}
           >
             <Text className="font-bold text-center text-white">Izin</Text>
           </TouchableOpacity>
