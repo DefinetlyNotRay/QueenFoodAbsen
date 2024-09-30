@@ -15,8 +15,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Sidenav from "../components/Sidenav";
 import { BlurView } from "expo-blur";
 import { Table, Row, Rows } from "react-native-table-component";
+import { NGROK_API } from "@env";
 
 const izin = () => {
+  const apiUrl = NGROK_API;
+
   const router = useRouter();
   const [tableIzinData, setIzinTableData] = useState([
     ["1", "Alex", "a", "Approve"],
@@ -58,7 +61,7 @@ const izin = () => {
       }
       // Fetch Izin Data
       const izinResponse = await fetch(
-        `https://459a-27-131-1-4.ngrok-free.app/table-izin-karyawan/${userId}`,
+        `${apiUrl}/table-izin-karyawan/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

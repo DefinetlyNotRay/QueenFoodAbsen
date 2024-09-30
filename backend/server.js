@@ -63,7 +63,7 @@ const checkAndAddAlphaEntries = async () => {
           `No entry found for user ${id_akun}, adding Alpha entry...`
         );
 
-        const detail_absen = await pool.query(
+        const [detail_absen] = await pool.query(
           "INSERT INTO detail_absen (id_akun, foto_diri, foto_etalase, id_izin) VALUES (?, NULL, NULL, NULL)",
           [id_akun]
         );
@@ -72,8 +72,8 @@ const checkAndAddAlphaEntries = async () => {
         console.log("Inserted detail ID:", id_detail);
 
         await pool.query(
-          'INSERT INTO absen (id_akun, tanggal_absen, absen_time, pulang_time, detail, id_detail) VALUES (?, CURDATE(), NULL, NULL, "Alpha", ?)',
-          [id_akun, id_detail]
+          'INSERT INTO absen (id_akun, tanggal_absen, absen_time, pulang_time, detail, id_detail) VALUES (?, ?, NULL, NULL, "Alpha", ?)',
+          [id_akun, yesterdayDateString, id_detail]
         );
         console.log(
           `Alpha entry added for user ${id_akun} on ${yesterdayDateString}`
@@ -89,9 +89,6 @@ const checkAndAddAlphaEntries = async () => {
 
 // Schedule the job to run every day at midnight
 cron.schedule("0 0 * * *", checkAndAddAlphaEntries); // Runs at 00:00 (midnight)
-
-// Call the function for testing
-checkAndAddAlphaEntries();
 
 app.post("/generate-upload-url", (req, res) => {
   const uploadURL = "Your generated UploadThing URL here"; // Replace with actual code to generate the URL
@@ -328,18 +325,29 @@ app.post("/createAbsen", async (req, res) => {
     res.status(500).json({ error: "Failed to create absen" });
   }
 });
-app.post("/absen-pulang/:userId", async (req, res) => {
+app.put("/absen-pulang/:userId", async (req, res) => {
   const { userId } = req.params;
   const today = new Date().toISOString().split("T")[0]; // Get current date in 'YYYY-MM-DD' format
 
   try {
-    // Update the attendance record for the user to set the pulang_time
-    const result = await pool.query(
-      `UPDATE absen SET pulang_time = ? WHERE id_akun = ? AND tanggal_absen = ?`,
-      [new Date(), userId, today] // Set pulang_time to the current timestamp
+    // Check if pulang_time is already updated
+    const [rows] = await pool.query(
+      `SELECT pulang_time FROM absen WHERE id_akun = ? AND tanggal_absen = ?`,
+      [userId, today]
     );
 
-    // Check if any row was affected (updated)
+    if (rows.length > 0 && rows[0].pulang_time) {
+      return res.status(200).json({ message: "Pulang time already updated." });
+    }
+
+    // Proceed with the update if pulang_time is not set
+    const [result] = await pool.query(
+      `UPDATE absen SET pulang_time = ? WHERE id_akun = ? AND tanggal_absen = ?`,
+      [new Date(), userId, today] // Use current timestamp
+    );
+
+    console.log("Affected Rows:", result.affectedRows); // Debugging line
+
     if (result.affectedRows > 0) {
       return res.status(200).json({ message: "Absen Pulang Berhasil." });
     } else {
@@ -352,6 +360,7 @@ app.post("/absen-pulang/:userId", async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 });
+
 app.get("/checkAttendance", async (req, res) => {
   const { userId, date } = req.query;
 

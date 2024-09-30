@@ -11,8 +11,11 @@ import axios from "axios";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { NGROK_API } from "@env";
 
 const Login = () => {
+  const apiUrl = NGROK_API;
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
@@ -33,13 +36,10 @@ const Login = () => {
   }, []);
   const handleLogin = async () => {
     try {
-      const response = await axios.post(
-        "https://459a-27-131-1-4.ngrok-free.app/login",
-        {
-          username,
-          password,
-        }
-      );
+      const response = await axios.post(`${apiUrl}/login`, {
+        username,
+        password,
+      });
 
       if (response.data.success) {
         await AsyncStorage.setItem("authToken", response.data.token);

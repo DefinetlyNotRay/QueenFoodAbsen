@@ -19,6 +19,8 @@ import { Dropdown } from "react-native-element-dropdown";
 import * as ImagePicker from "expo-image-picker"; // Import the ImagePicker
 import axios from "axios";
 import * as Location from "expo-location";
+import { NGROK_API } from "@env";
+
 interface DecodedToken {
   id: string;
   username: string;
@@ -28,7 +30,8 @@ interface DecodedToken {
 const HomePage: React.FC = () => {
   const [selectedImageAbsen, setSelectedImageAbsen] = useState<string | null>(
     null
-  ); // State to store the selected image URI
+  );
+  const apiUrl = NGROK_API;
 
   const statusColors = {
     Hadir: "#159847",
@@ -62,24 +65,14 @@ const HomePage: React.FC = () => {
 
   const [hasAttendedToday, setHasAttendedToday] = useState(false);
   const [hasGoneHome, setHasGoneHome] = useState(false);
+  const [isGoneHomeDisabled, setIsGoneHomeDisabled] = useState(true);
 
   useEffect(() => {
     checkAttendance();
     checkHome();
     checkIzin();
   }, []);
-  const [isLoading, setIsLoading] = useState(true); // Tambahkan state loading
-
-  useEffect(() => {
-    const loadData = async () => {
-      await checkAttendance();
-      await checkHome();
-      await checkIzin();
-      setIsLoading(false); // Set loading false setelah semua data diambil
-    };
-
-    loadData();
-  }, []);
+  const [isLoading, setIsLoading] = useState(false); // Tambahkan state loading
 
   const checkAttendance = async () => {
     try {
@@ -93,20 +86,23 @@ const HomePage: React.FC = () => {
       // Fetch attendance data for today
       const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
       const response = await axios.get(
-        `https://459a-27-131-1-4.ngrok-free.app/checkAttendance?userId=${userId}&date=${today}`
+        `${apiUrl}/checkAttendance?userId=${userId}&date=${today}`
       );
 
       // Check if the user has attended today
       if (response.data.hasAttended) {
         setHasAttendedToday(true);
+        setIsGoneHomeDisabled(false);
       } else {
         setHasAttendedToday(false);
+        setIsGoneHomeDisabled(true);
       }
     } catch (error) {
       console.error("Error checking attendance:", error);
       Alert.alert("Error", "Failed to check attendance.");
     }
   };
+
   const checkHome = async () => {
     try {
       // Get the user ID from AsyncStorage or other storage method
@@ -119,7 +115,7 @@ const HomePage: React.FC = () => {
       // Fetch attendance data for today
       const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
       const response = await axios.get(
-        `https://459a-27-131-1-4.ngrok-free.app/checkHome?userId=${userId}&date=${today}`
+        `${apiUrl}/checkHome?userId=${userId}&date=${today}`
       );
 
       // Check if the user has attended today
@@ -145,7 +141,7 @@ const HomePage: React.FC = () => {
       // Fetch attendance data for today
       const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
       const response = await axios.get(
-        `https://459a-27-131-1-4.ngrok-free.app/checkIzin?userId=${userId}&date=${today}`
+        `${apiUrl}/checkIzin?userId=${userId}&date=${today}`
       );
 
       // Check if the user has attended today
@@ -293,10 +289,7 @@ const HomePage: React.FC = () => {
       };
 
       // Send the data to your backend
-      const response = await axios.post(
-        `https://459a-27-131-1-4.ngrok-free.app/createAbsen`,
-        absenData
-      );
+      const response = await axios.post(`${apiUrl}/createAbsen`, absenData);
 
       if (response.status === 200) {
         Alert.alert("Success", "Absen created successfully.");
@@ -460,9 +453,7 @@ const HomePage: React.FC = () => {
           throw new Error("User ID not found in AsyncStorage");
         }
 
-        const response = await axios.get(
-          `https://459a-27-131-1-4.ngrok-free.app/attendance/${userId}`
-        );
+        const response = await axios.get(`${apiUrl}/attendance/${userId}`);
         const attendanceData = response.data;
 
         // Get today's date and start date (September 1st)
@@ -620,22 +611,36 @@ const HomePage: React.FC = () => {
         {
           text: "OK",
           onPress: async () => {
-            // Proceed with the API call if confirmed
-            const response = await axios.post(
-              `https://459a-27-131-1-4.ngrok-free.app/absen-pulang/${userId}`
-            );
+            try {
+              setIsLoading(true); // Set loading state
 
-            console.log("Absen Pulang Response:", response.data); // Debugging line
-            Alert.alert("Success", response.data.message);
+              // Proceed with the API call if confirmed
+              const response = await axios.put(
+                `${apiUrl}/absen-pulang/${userId}`
+              );
+
+              if (response.status === 200) {
+                console.log("Absen Pulang Response:", response.data); // Debugging line
+                Alert.alert("Success", response.data.message);
+                checkHome(); // Call your checkHome function
+              } else {
+                Alert.alert("Error", "Unexpected response from the server.");
+              }
+            } catch (error) {
+              console.error("Error during absen pulang:", error);
+              Alert.alert(
+                "Error",
+                error.response?.data?.message || "Failed to mark attendance."
+              );
+            } finally {
+              setIsLoading(false); // Reset loading state
+            }
           },
         },
       ]);
     } catch (error) {
       console.error("Error during absen pulang:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to mark attendance."
-      );
+      Alert.alert("Error", "Failed to mark attendance.");
     }
   };
   return (
@@ -665,7 +670,8 @@ const HomePage: React.FC = () => {
           </View>
           <View>
             <Text className="font-bold text-white">Lokasi:-</Text>
-            <Text className="font-bold text-white">Total Waktu Hari Ini:-</Text>
+            <Text className="font-bold text-white">Absen Masuk:-</Text>
+            <Text className="font-bold text-white">Absen Keluar:-</Text>
           </View>
         </View>
 
@@ -743,7 +749,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             className="bg-[#F23737] w-[160px] rounded-md py-3 px-1"
             onPress={absenPulang}
-            disabled={hasGoneHome || hasIzinToday} // Disable button if the user has gone home today
+            disabled={hasGoneHome || hasIzinToday || isGoneHomeDisabled} // Disable button if the user has gone home today
           >
             <Text className="font-bold text-center text-white">
               Absen Pulang

@@ -10,9 +10,11 @@ import { Dropdown } from "react-native-element-dropdown";
 import { Table, Row, Rows } from "react-native-table-component";
 import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-
+import { NGROK_API } from "@env";
 const AdminPage: React.FC = () => {
   const router = useRouter();
+  const apiUrl = NGROK_API;
+
   const [stats, setStats] = useState({
     totalEmployees: 0,
     attendedToday: 0,
@@ -70,12 +72,9 @@ const AdminPage: React.FC = () => {
       const token = await AsyncStorage.getItem("authToken");
 
       // Fetch Izin Data
-      const izinResponse = await fetch(
-        "https://459a-27-131-1-4.ngrok-free.app/table-izin",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const izinResponse = await fetch(`${apiUrl}/table-izin`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!izinResponse.ok) {
         Alert.alert("Error", "Failed to fetch izin");
@@ -106,12 +105,9 @@ const AdminPage: React.FC = () => {
       setIzinTableData(formattedIzinData);
 
       // Fetch Attendance Data
-      const absenResponse = await fetch(
-        "https://459a-27-131-1-4.ngrok-free.app/table-absen",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const absenResponse = await fetch(`${apiUrl}/table-absen`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!absenResponse.ok) {
         Alert.alert("Error", "Failed to fetch attendance");
@@ -149,17 +145,14 @@ const AdminPage: React.FC = () => {
   const handleApprove = async (id_izin) => {
     const token = await AsyncStorage.getItem("authToken");
 
-    const response = await fetch(
-      `https://459a-27-131-1-4.ngrok-free.app/accept-status/`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json", // Specify content type
-        },
-        body: JSON.stringify({ id_izin }), // Send id_izin in the body
-      }
-    );
+    const response = await fetch(`${apiUrl}/accept-status/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json", // Specify content type
+      },
+      body: JSON.stringify({ id_izin }), // Send id_izin in the body
+    });
 
     if (!response.ok) {
       Alert.alert("Error", "Failed to approve izin");
@@ -172,17 +165,14 @@ const AdminPage: React.FC = () => {
   const handleReject = async (id_izin) => {
     const token = await AsyncStorage.getItem("authToken");
 
-    const response = await fetch(
-      `https://459a-27-131-1-4.ngrok-free.app/reject-status/`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json", // Specify content type
-        },
-        body: JSON.stringify({ id_izin }), // Send id_izin in the body
-      }
-    );
+    const response = await fetch(`${apiUrl}/reject-status/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json", // Specify content type
+      },
+      body: JSON.stringify({ id_izin }), // Send id_izin in the body
+    });
 
     if (!response.ok) {
       Alert.alert("Error", "Failed to reject izin");
@@ -215,12 +205,9 @@ const AdminPage: React.FC = () => {
     const getStats = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(
-          "https://459a-27-131-1-4.ngrok-free.app/employee-stats",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const response = await fetch(`${apiUrl}/employee-stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
         if (!response.ok) {
           Alert.alert("Error", "Failed to fetch statistics");
