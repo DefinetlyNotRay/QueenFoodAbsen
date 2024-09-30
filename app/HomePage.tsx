@@ -16,7 +16,7 @@ import Sidenav from "../components/Sidenav";
 import { BlurView } from "expo-blur";
 import { Calendar, CalendarProps } from "react-native-calendars";
 import { Dropdown } from "react-native-element-dropdown";
-import * as ImagePicker from "expo-image-picker"; // Import the ImagePicker
+import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import * as Location from "expo-location";
 import { NGROK_API } from "@env";
@@ -28,28 +28,15 @@ interface DecodedToken {
 }
 
 const HomePage: React.FC = () => {
+  // State variables
   const [selectedImageAbsen, setSelectedImageAbsen] = useState<string | null>(
     null
   );
-  const apiUrl = NGROK_API;
-
-  const statusColors = {
-    Hadir: "#159847",
-    Libur: "#F2D437",
-    Izin: "#00CABE",
-    Sakit: "#B0AF9F",
-    Alpha: "#6F6262",
-  };
-  const items = [
-    { label: "Sakit", value: "Sakit" },
-    { label: "Izin", value: "Izin" },
-  ];
-  const router = useRouter();
   const [absenModal, setAbsenModalVisible] = useState(false);
   const [locationModal, setLoactionModal] = useState(false);
   const [izinModal, setIzingModalVisible] = useState(false);
   const [alasanInput, setAlesanInput] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null); // State to store the selected image URI
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [etalaseImage, setEtalaseImage] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [etalaseUrl, setEtalaseUrl] = useState("");
@@ -58,38 +45,141 @@ const HomePage: React.FC = () => {
   );
   const [isFocus, setIsFocus] = useState(false);
   const [value, setValue] = useState("");
-
   const [etelaseModal, setEtelaseModal] = useState(false);
-
   const [hasIzinToday, setHasIzinToday] = useState(false);
-
   const [hasAttendedToday, setHasAttendedToday] = useState(false);
   const [hasGoneHome, setHasGoneHome] = useState(false);
   const [isGoneHomeDisabled, setIsGoneHomeDisabled] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [markedDates, setMarkedDates] = useState({});
+  const [isSidenavVisible, setSidenavVisible] = useState(false);
 
+  const router = useRouter();
+  const apiUrl = NGROK_API;
+
+  // Constants
+  const statusColors = {
+    Hadir: "#159847",
+    Libur: "#F2D437",
+    Izin: "#00CABE",
+    Sakit: "#B0AF9F",
+    Alpha: "#6F6262",
+  };
+
+  const items = [
+    { label: "Sakit", value: "Sakit" },
+    { label: "Izin", value: "Izin" },
+  ];
+
+  // useEffect hooks
   useEffect(() => {
     checkAttendance();
     checkHome();
     checkIzin();
   }, []);
-  const [isLoading, setIsLoading] = useState(false); // Tambahkan state loading
 
+  useEffect(() => {
+    console.log("Updated etalaseUrl state:", etalaseUrl);
+  }, [etalaseUrl]);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const level = await AsyncStorage.getItem("level");
+        if (level === "admin") {
+          router.replace("/AdminPage");
+        }
+        if (!token) {
+          router.replace("/index");
+        }
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
+        }
+
+        const response = await axios.get(`${apiUrl}/attendance/${userId}`);
+        const attendanceData = response.data;
+
+        // Get today's date and start date (September 1st)
+        const today = new Date();
+        const startDate = new Date("2024-09-01");
+
+        // Initialize dates object with Alpha status for every day from startDate until today
+        const dates = {};
+        let currentDate = new Date(startDate);
+
+        while (currentDate <= today) {
+          const dateString = currentDate.toISOString().split("T")[0];
+          dates[dateString] = {
+            selected: true,
+            selectedColor: statusColors["Alpha"],
+            dotColor: "red",
+            selectedTextColor: "white",
+          };
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Update dates object based on attendance data
+        attendanceData.forEach((item) => {
+          const { absen_time, detail } = item;
+          const date = absen_time.split("T")[0];
+
+          console.log(`Detail: ${detail}, Color: ${statusColors[detail]}`);
+
+          if (statusColors[detail]) {
+            dates[date] = {
+              selected: true,
+              selectedColor: statusColors[detail],
+              dotColor: "red",
+              selectedTextColor: "white",
+            };
+          }
+        });
+
+        console.log("Marked Dates:", dates);
+
+        // Set marked dates
+        setMarkedDates(dates);
+      } catch (error) {
+        console.error("Error fetching attendance data:", error);
+        Alert.alert(
+          "Error",
+          "An error occurred while fetching attendance data"
+        );
+      }
+    };
+
+    fetchAttendanceData();
+  }, []);
+
+  // Helper functions
+  /**
+   * Checks if the user has already attended today
+   */
   const checkAttendance = async () => {
     try {
-      // Get the user ID from AsyncStorage or other storage method
       const userId = await AsyncStorage.getItem("userId");
-
       if (!userId) {
         throw new Error("User ID not found");
       }
 
-      // Fetch attendance data for today
-      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const today = new Date().toISOString().split("T")[0];
       const response = await axios.get(
         `${apiUrl}/checkAttendance?userId=${userId}&date=${today}`
       );
 
-      // Check if the user has attended today
       if (response.data.hasAttended) {
         setHasAttendedToday(true);
         setIsGoneHomeDisabled(false);
@@ -103,58 +193,61 @@ const HomePage: React.FC = () => {
     }
   };
 
+  /**
+   * Checks if the user has already gone home today
+   */
   const checkHome = async () => {
     try {
-      // Get the user ID from AsyncStorage or other storage method
       const userId = await AsyncStorage.getItem("userId");
-
       if (!userId) {
         throw new Error("User ID not found");
       }
 
-      // Fetch attendance data for today
-      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const today = new Date().toISOString().split("T")[0];
       const response = await axios.get(
         `${apiUrl}/checkHome?userId=${userId}&date=${today}`
       );
 
-      // Check if the user has attended today
       if (response.data.hasAttended) {
         setHasGoneHome(true);
       } else {
         setHasGoneHome(false);
       }
     } catch (error) {
-      console.error("Error checking attendance:", error);
-      Alert.alert("Error", "Failed to check attendance.");
+      console.error("Error checking home status:", error);
+      Alert.alert("Error", "Failed to check home status.");
     }
   };
+
+  /**
+   * Checks if the user has already submitted an absence request today
+   */
   const checkIzin = async () => {
     try {
-      // Get the user ID from AsyncStorage or other storage method
       const userId = await AsyncStorage.getItem("userId");
-
       if (!userId) {
         throw new Error("User ID not found");
       }
 
-      // Fetch attendance data for today
-      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const today = new Date().toISOString().split("T")[0];
       const response = await axios.get(
         `${apiUrl}/checkIzin?userId=${userId}&date=${today}`
       );
 
-      // Check if the user has attended today
       if (response.data.hasAttended) {
         setHasIzinToday(true);
       } else {
         setHasIzinToday(false);
       }
     } catch (error) {
-      console.error("Error checking attendance:", error);
-      Alert.alert("Error", "Failed to check attendance.");
+      console.error("Error checking izin status:", error);
+      Alert.alert("Error", "Failed to check izin status.");
     }
   };
+
+  /**
+   * Retrieves the current location of the user
+   */
   const getLocationData = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -164,9 +257,7 @@ const HomePage: React.FC = () => {
     let currentLocation = await Location.getCurrentPositionAsync({});
     setLocation(currentLocation);
     setTimeout(() => {
-      // Close the first modal
       setLoactionModal(false);
-      // Open the second modal
       setEtelaseModal(true);
     }, 1000);
     Alert.alert(
@@ -175,6 +266,9 @@ const HomePage: React.FC = () => {
     );
   };
 
+  /**
+   * Takes a photo using the device camera
+   */
   const takePhoto = async () => {
     console.log("Taking photo...");
 
@@ -187,13 +281,17 @@ const HomePage: React.FC = () => {
     const result = await ImagePicker.launchCameraAsync(options);
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      const asset = result.assets[0]; // Get the first asset
-      setSelectedImageAbsen(asset.uri); // Now asset is of type ImagePicker.ImagePickerAsset
-      await handleUpload(asset.uri); // Call handleUpload with the image URI
+      const asset = result.assets[0];
+      setSelectedImageAbsen(asset.uri);
+      await handleUpload(asset.uri);
     } else {
       console.log("Camera error: ", result.error);
     }
   };
+
+  /**
+   * Takes a photo of the etalase using the device camera
+   */
   const takeEtalase = async () => {
     console.log("Taking photo...");
 
@@ -206,13 +304,17 @@ const HomePage: React.FC = () => {
     const result = await ImagePicker.launchCameraAsync(options);
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      const asset = result.assets[0]; // Get the first asset
-      setEtalaseImage(asset.uri); // Now asset is of type ImagePicker.ImagePickerAsset
-      await handleEtalaseUpload(asset.uri); // Call handleUpload with the image URI
+      const asset = result.assets[0];
+      setEtalaseImage(asset.uri);
+      await handleEtalaseUpload(asset.uri);
     } else {
       console.log("Camera error: ", result.error);
     }
   };
+
+  /**
+   * Handles the upload of the attendance photo
+   */
   const handleUpload = async (imageUri: string) => {
     try {
       const imageUrl = await uploadImageToCloudinary(imageUri);
@@ -224,6 +326,9 @@ const HomePage: React.FC = () => {
     }
   };
 
+  /**
+   * Retrieves the address from given coordinates
+   */
   const getAddressFromCoordinates = async (latitude: any, longitude: any) => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`;
 
@@ -235,48 +340,32 @@ const HomePage: React.FC = () => {
       return "Error fetching address";
     }
   };
-  useEffect(() => {
-    console.log("Updated etalaseUrl state:", etalaseUrl);
-  }, [etalaseUrl]); // This will run every time etalaseUrl changes
 
+  /**
+   * Creates an attendance record
+   */
   const createAbsen = async (etalaseUrl: string) => {
     if (isLoading) {
       Alert.alert("Loading", "Please wait until all data is loaded.");
-      return; // Cegah tindakan jika masih loading
+      return;
     }
     try {
-      // Get the user ID from AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
-
       if (!userId) {
         throw new Error("User ID not found in AsyncStorage");
       }
-      console.log(
-        "image " + imageUrl + " etalase " + etalaseUrl + " location " + location
-      );
 
-      // Ensure both image URLs and location are available
       if (!imageUrl || !etalaseUrl || !location) {
-        console.log(
-          "image " +
-            imageUrl +
-            " etalase " +
-            etalaseUrl +
-            " location " +
-            location
-        );
         Alert.alert(
           "Error",
           "Please capture the images and retrieve location."
         );
         return;
       }
-      // Extract latitude and longitude from location
-      const { latitude, longitude } = location.coords;
 
-      // Get the address from latitude and longitude
+      const { latitude, longitude } = location.coords;
       const address = await getAddressFromCoordinates(latitude, longitude);
-      // Prepare the data to be sent
+
       const absenData = {
         userId,
         imageUrl,
@@ -284,19 +373,16 @@ const HomePage: React.FC = () => {
         location: {
           latitude,
           longitude,
-          address, // Include the address in the location data
+          address,
         },
       };
 
-      // Send the data to your backend
       const response = await axios.post(`${apiUrl}/createAbsen`, absenData);
 
       if (response.status === 200) {
         Alert.alert("Success", "Absen created successfully.");
-        // Assuming today is the date you want to mark
-        const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+        const today = new Date().toISOString().split("T")[0];
 
-        // Update the marked dates after successful upload
         setMarkedDates((prevDates) => ({
           ...prevDates,
           [today]: {
@@ -316,6 +402,10 @@ const HomePage: React.FC = () => {
       Alert.alert("Error", "Failed to create absen.");
     }
   };
+
+  /**
+   * Handles the upload of the etalase photo
+   */
   const handleEtalaseUpload = async (imageUri: string) => {
     try {
       const imageUrl = await uploadEtalaseToCloudinary(imageUri);
@@ -326,6 +416,10 @@ const HomePage: React.FC = () => {
       Alert.alert("Error", "Failed to upload etalase image.");
     }
   };
+
+  /**
+   * Uploads the etalase image to Cloudinary
+   */
   const uploadEtalaseToCloudinary = async (imageUri: String) => {
     const userId = await AsyncStorage.getItem("userId");
     console.log("User ID:", userId);
@@ -362,15 +456,18 @@ const HomePage: React.FC = () => {
     }
   };
 
+  /**
+   * Uploads the attendance image to Cloudinary
+   */
   const uploadImageToCloudinary = async (imageUri: String) => {
     const userId = await AsyncStorage.getItem("userId");
     const formData = new FormData();
     formData.append("file", {
       uri: imageUri,
-      type: "image/jpeg", // or the appropriate type for your image
+      type: "image/jpeg",
       name: `${userId}.jpg`,
     });
-    formData.append("upload_preset", "my_upload_preset"); // Set your upload preset
+    formData.append("upload_preset", "my_upload_preset");
 
     try {
       const response = await axios.post(
@@ -383,14 +480,10 @@ const HomePage: React.FC = () => {
         }
       );
       setTimeout(() => {
-        // Close the first modal
-
         setAbsenModalVisible(false);
-
-        // Open the second modal
         setLoactionModal(true);
         Alert.alert("Success", "Image Successfully Uploaded.");
-      }, 1000); // Simulating a 1-second delay for photo upload
+      }, 1000);
       return response.data.secure_url;
     } catch (error) {
       console.error("Error uploading image:", error);
@@ -398,15 +491,18 @@ const HomePage: React.FC = () => {
     }
   };
 
+  /**
+   * Uploads the absence request image to Cloudinary
+   */
   const uploadIzinImageToCloudinary = async (imageUri: String) => {
     const userId = await AsyncStorage.getItem("userId");
     const formData = new FormData();
     formData.append("file", {
       uri: imageUri,
-      type: "image/jpeg", // or the appropriate type for your image
+      type: "image/jpeg",
       name: `${userId}.jpg`,
     });
-    formData.append("upload_preset", "my_upload_preset"); // Set your upload preset
+    formData.append("upload_preset", "my_upload_preset");
 
     try {
       const response = await axios.post(
@@ -418,108 +514,30 @@ const HomePage: React.FC = () => {
           },
         }
       );
-      return response.data.secure_url; // Return the Cloudinary URL
+      return response.data.secure_url;
     } catch (error) {
       console.error("Error uploading image:", error);
       throw error;
     }
   };
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = await AsyncStorage.getItem("authToken");
-        const level = await AsyncStorage.getItem("level");
-        if (level === "admin") {
-          router.replace("/AdminPage");
-        }
-        if (!token) {
-          router.replace("/index");
-        }
-      } catch (error) {
-        console.error("Failed to get auth token:", error);
-      }
-    };
 
-    checkAuth();
-  }, []);
-
-  const [markedDates, setMarkedDates] = useState({});
-
-  useEffect(() => {
-    const fetchAttendanceData = async () => {
-      try {
-        const userId = await AsyncStorage.getItem("userId");
-        if (!userId) {
-          throw new Error("User ID not found in AsyncStorage");
-        }
-
-        const response = await axios.get(`${apiUrl}/attendance/${userId}`);
-        const attendanceData = response.data;
-
-        // Get today's date and start date (September 1st)
-        const today = new Date();
-        const startDate = new Date("2024-09-01");
-
-        // Initialize dates object with Alpha status for every day from startDate until today
-        const dates = {};
-        let currentDate = new Date(startDate);
-
-        while (currentDate <= today) {
-          const dateString = currentDate.toISOString().split("T")[0];
-          dates[dateString] = {
-            selected: true,
-            selectedColor: statusColors["Alpha"],
-            dotColor: "red",
-            selectedTextColor: "white",
-          };
-          currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
-        }
-
-        // Update dates object based on attendance data
-        attendanceData.forEach((item) => {
-          const { absen_time, detail } = item;
-          const date = absen_time.split("T")[0]; // Extract date part from absen_time
-
-          // Debugging line to check the detail and statusColors
-          console.log(`Detail: ${detail}, Color: ${statusColors[detail]}`);
-
-          if (statusColors[detail]) {
-            dates[date] = {
-              selected: true,
-              selectedColor: statusColors[detail],
-              dotColor: "red",
-              selectedTextColor: "white",
-            };
-          }
-        });
-
-        // Debugging line to see the final dates object
-        console.log("Marked Dates:", dates);
-
-        // Set marked dates
-        setMarkedDates(dates);
-      } catch (error) {
-        console.error("Error fetching attendance data:", error);
-        Alert.alert(
-          "Error",
-          "An error occurred while fetching attendance data"
-        );
-      }
-    };
-
-    fetchAttendanceData();
-  }, []);
-
-  const [isSidenavVisible, setSidenavVisible] = useState(false);
-
+  /**
+   * Toggles the visibility of the side navigation
+   */
   const toggleSidenav = () => {
     setSidenavVisible(!isSidenavVisible);
   };
 
+  /**
+   * Closes the side navigation
+   */
   const closeSidenav = () => {
     setSidenavVisible(false);
   };
 
+  /**
+   * Allows the user to pick an image from the device gallery
+   */
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -532,6 +550,9 @@ const HomePage: React.FC = () => {
     }
   };
 
+  /**
+   * Submits the absence request form
+   */
   const submitForm = async () => {
     try {
       const userId = await AsyncStorage.getItem("userId");
@@ -544,16 +565,12 @@ const HomePage: React.FC = () => {
         return;
       }
 
-      // Debugging log before the image upload
       console.log("Uploading image to Cloudinary...");
-
-      // Upload image to Cloudinary first
       const imageLink = await uploadIzinImageToCloudinary(selectedImage);
       console.log("Image uploaded to Cloudinary:", imageLink);
 
-      const today = new Date().toISOString().split("T")[0]; // Format: yyyy-mm-dd
+      const today = new Date().toISOString().split("T")[0];
 
-      // Send alasanInput and imageLink to your backend
       console.log("Saving data...");
       const saveResponse = await axios.post(
         `https://459a-27-131-1-4.ngrok-free.app/uploadIzin?userId=${userId}&date=${today}`,
@@ -563,9 +580,8 @@ const HomePage: React.FC = () => {
           value,
         }
       );
-      console.log("Save Response:", saveResponse.data); // Debugging line
+      console.log("Save Response:", saveResponse.data);
 
-      // Update the marked dates after successful upload
       setMarkedDates((prevDates) => ({
         ...prevDates,
         [today]: {
@@ -575,13 +591,11 @@ const HomePage: React.FC = () => {
         },
       }));
 
-      // Reset the form fields after successful submission
       setAlesanInput("");
       setSelectedImage(null);
       setValue("");
       setIzingModalVisible(false);
 
-      // Log success and show alert
       console.log("Form submission successful. Showing alert.");
       Alert.alert("Success", "Form submitted successfully.");
     } catch (error: any) {
@@ -589,12 +603,13 @@ const HomePage: React.FC = () => {
         "Error submitting form:",
         error.response ? error.response.data : error.message
       );
-
-      // Show an alert if an error occurs
       Alert.alert("Error", "Failed to submit form.");
     }
   };
 
+  /**
+   * Marks the user as gone home for the day
+   */
   const absenPulang = async () => {
     try {
       const userId = await AsyncStorage.getItem("userId");
@@ -602,7 +617,6 @@ const HomePage: React.FC = () => {
         throw new Error("User ID not found in AsyncStorage");
       }
 
-      // Confirm action
       Alert.alert("Confirm", "Are you sure?", [
         {
           text: "Cancel",
@@ -612,17 +626,15 @@ const HomePage: React.FC = () => {
           text: "OK",
           onPress: async () => {
             try {
-              setIsLoading(true); // Set loading state
-
-              // Proceed with the API call if confirmed
+              setIsLoading(true);
               const response = await axios.put(
                 `${apiUrl}/absen-pulang/${userId}`
               );
 
               if (response.status === 200) {
-                console.log("Absen Pulang Response:", response.data); // Debugging line
+                console.log("Absen Pulang Response:", response.data);
                 Alert.alert("Success", response.data.message);
-                checkHome(); // Call your checkHome function
+                checkHome();
               } else {
                 Alert.alert("Error", "Unexpected response from the server.");
               }
@@ -633,7 +645,7 @@ const HomePage: React.FC = () => {
                 error.response?.data?.message || "Failed to mark attendance."
               );
             } finally {
-              setIsLoading(false); // Reset loading state
+              setIsLoading(false);
             }
           },
         },
