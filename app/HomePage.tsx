@@ -36,7 +36,6 @@ const HomePage: React.FC = () => {
   const [locationModal, setLoactionModal] = useState(false);
   const [izinModal, setIzingModalVisible] = useState(false);
   const [alasanInput, setAlesanInput] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [etalaseImage, setEtalaseImage] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [etalaseUrl, setEtalaseUrl] = useState("");
@@ -53,6 +52,8 @@ const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [markedDates, setMarkedDates] = useState({});
   const [isSidenavVisible, setSidenavVisible] = useState(false);
+  const [absenTime, setAbsenTime] = useState("");
+  const [pulangTime, setPulangTime] = useState("");
 
   const router = useRouter();
   const apiUrl = NGROK_API;
@@ -76,11 +77,56 @@ const HomePage: React.FC = () => {
     checkAttendance();
     checkHome();
     checkIzin();
+    getTime();
   }, []);
 
   useEffect(() => {
     console.log("Updated etalaseUrl state:", etalaseUrl);
   }, [etalaseUrl]);
+
+  const getTime = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const response = await axios.get(
+        `${apiUrl}/getTime?userId=${userId}&date=${today}`
+      );
+
+      // Mengakses data dari respons
+      const { absen_time, pulang_time } = response.data;
+
+      if (absen_time) {
+        // Mengkonversi waktu UTC ke waktu lokal untuk absen_time
+        const absenDate = new Date(absen_time);
+        const timeAbsen = absenDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        setAbsenTime(timeAbsen); // Set absen time state
+        console.log("Absen Time:", timeAbsen);
+      }
+
+      if (pulang_time) {
+        // Mengkonversi waktu UTC ke waktu lokal untuk pulang_time (jika ada)
+        const pulangDate = new Date(pulang_time);
+        const timePulang = pulangDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        setPulangTime(timePulang); // Set pulang time state if available
+        console.log("Pulang Time:", timePulang);
+      } else {
+        setPulangTime(""); // Set null if pulang time is not available
+        console.log("Pulang time is not set.");
+      }
+    } catch (error) {}
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -396,6 +442,7 @@ const HomePage: React.FC = () => {
         setEtalaseUrl("");
         checkAttendance();
         checkHome();
+        getTime();
       }
     } catch (error) {
       console.error("Error creating absen:", error);
@@ -536,21 +583,6 @@ const HomePage: React.FC = () => {
   };
 
   /**
-   * Allows the user to pick an image from the device gallery
-   */
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
-    }
-  };
-
-  /**
    * Submits the absence request form
    */
   const submitForm = async () => {
@@ -560,23 +592,18 @@ const HomePage: React.FC = () => {
         throw new Error("User ID not found in AsyncStorage");
       }
 
-      if (!alasanInput || !selectedImage) {
+      if (!alasanInput) {
         Alert.alert("Error", "Please fill in all fields and select an image.");
         return;
       }
-
-      console.log("Uploading image to Cloudinary...");
-      const imageLink = await uploadIzinImageToCloudinary(selectedImage);
-      console.log("Image uploaded to Cloudinary:", imageLink);
 
       const today = new Date().toISOString().split("T")[0];
 
       console.log("Saving data...");
       const saveResponse = await axios.post(
-        `https://459a-27-131-1-4.ngrok-free.app/uploadIzin?userId=${userId}&date=${today}`,
+        `${apiUrl}/uploadIzin?userId=${userId}&date=${today}`,
         {
           alasanInput,
-          imageLink,
           value,
         }
       );
@@ -592,7 +619,6 @@ const HomePage: React.FC = () => {
       }));
 
       setAlesanInput("");
-      setSelectedImage(null);
       setValue("");
       setIzingModalVisible(false);
 
@@ -635,6 +661,7 @@ const HomePage: React.FC = () => {
                 console.log("Absen Pulang Response:", response.data);
                 Alert.alert("Success", response.data.message);
                 checkHome();
+                getTime();
               } else {
                 Alert.alert("Error", "Unexpected response from the server.");
               }
@@ -655,6 +682,7 @@ const HomePage: React.FC = () => {
       Alert.alert("Error", "Failed to mark attendance.");
     }
   };
+  useEffect;
   return (
     <View style={{ flex: 1 }}>
       <Header onToggleSidenav={toggleSidenav} />
@@ -682,8 +710,12 @@ const HomePage: React.FC = () => {
           </View>
           <View>
             <Text className="font-bold text-white">Lokasi:-</Text>
-            <Text className="font-bold text-white">Absen Masuk:-</Text>
-            <Text className="font-bold text-white">Absen Keluar:-</Text>
+            <Text className="font-bold text-white">
+              Absen Masuk:{absenTime}
+            </Text>
+            <Text className="font-bold text-white">
+              Absen Keluar:{pulangTime}
+            </Text>
           </View>
         </View>
 
@@ -833,23 +865,6 @@ const HomePage: React.FC = () => {
                           setIsFocus(false);
                         }}
                       />
-                    </View>
-                    <View className="">
-                      <Text className="font-extrabold">Lampiran</Text>
-                      <TouchableOpacity
-                        className="border "
-                        style={styles.uploadButton}
-                        onPress={pickImage}
-                      >
-                        <Text className="text-black">Pick Image</Text>
-                      </TouchableOpacity>
-
-                      {selectedImage && (
-                        <Image
-                          source={{ uri: selectedImage }}
-                          style={styles.selectedImage}
-                        />
-                      )}
                     </View>
                     <TouchableOpacity
                       className="bg-[#159847] py-2 px-2"

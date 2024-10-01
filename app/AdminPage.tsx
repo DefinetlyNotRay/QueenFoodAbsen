@@ -11,6 +11,7 @@ import { Table, Row, Rows } from "react-native-table-component";
 import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { NGROK_API } from "@env";
+import SidenavAdmin from "../components/SidenavAdmin";
 const AdminPage: React.FC = () => {
   const router = useRouter();
   const apiUrl = NGROK_API;
@@ -236,12 +237,20 @@ const AdminPage: React.FC = () => {
     DateTimePickerAndroid.open({
       value: date,
       onChange: (event, selectedDate) => {
-        if (selectedDate) {
+        if (event.type === "set" && selectedDate) {
+          // Only set date if 'OK' was pressed
           const formattedDate = formatDate(selectedDate);
           if (isFirstDatePicker) {
             setSelectedDate1(formattedDate);
           } else {
             setSelectedDate2(formattedDate);
+          }
+        } else if (event.type === "dismissed") {
+          // Handle cancel
+          if (isFirstDatePicker) {
+            setSelectedDate1(null);
+          } else {
+            setSelectedDate2(null);
           }
         }
       },
@@ -300,7 +309,7 @@ const AdminPage: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
+      <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
 
       <View className="p-4">
         <View>

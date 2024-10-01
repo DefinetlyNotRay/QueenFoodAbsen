@@ -1,7 +1,7 @@
-import { View, ActivityIndicator } from 'react-native';
-import React, { useEffect, useState } from 'react';
-import { Stack, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, ActivityIndicator } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const _layout = () => {
   const [loading, setLoading] = useState(true);
@@ -10,11 +10,11 @@ const _layout = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = await AsyncStorage.getItem('authToken');
-        console.log('AuthToken:', token); // Debugging line
+        const token = await AsyncStorage.getItem("authToken");
+        console.log("AuthToken:", token); // Debugging line
         if (!token) {
           // If there's no token, redirect to the login page
-          router.replace('/index');
+          router.replace("/index");
         } else {
           // If there's a token, stay on the current page
           setLoading(false);
@@ -29,7 +29,7 @@ const _layout = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
@@ -40,9 +40,10 @@ const _layout = () => {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="HomePage" options={{ headerShown: false }} />
       <Stack.Screen name="izin" options={{ headerShown: false }} />
+      <Stack.Screen name="izinAdmin" options={{ headerShown: false }} />
+      <Stack.Screen name="createSales" options={{ headerShown: false }} />
+
       <Stack.Screen name="AdminPage" options={{ headerShown: false }} />
-
-
     </Stack>
   );
 };

@@ -257,49 +257,6 @@ app.get("/employee-stats", async (req, res) => {
   }
 });
 
-// Set up Multer storage with Cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "uploads", // Optional: folder name in Cloudinary
-    allowed_formats: ["jpg", "png", "jpeg"],
-  },
-});
-
-const upload = multer({ storage: storage });
-
-// Route to handle image upload
-app.post("/upload-image", upload.single("image"), (req, res) => {
-  try {
-    // The image URL will be available in req.file.path
-    const imageUrl = req.file.path;
-    res.json({ imageUrl });
-  } catch (error) {
-    console.error("Error uploading image:", error);
-    res.status(500).json({ error: "Failed to upload image" });
-  }
-});
-
-app.post("/save-data", async (req, res) => {
-  const { alasanInput, imageLink } = req.body;
-
-  if (!alasanInput || !imageLink) {
-    return res
-      .status(400)
-      .json({ error: "Alasan and Image Link are required" });
-  }
-
-  const query = "INSERT INTO alasanTable (alasan, foto) VALUES (?, ?)"; // Update the table and column names as necessary
-
-  try {
-    await pool.query(query, [alasanInput, imageLink]);
-    res.json({ success: true, message: "Data saved successfully" });
-  } catch (err) {
-    console.error("Database Error:", err);
-    res.status(500).json({ error: "Failed to save to database" });
-  }
-});
-
 app.post("/createAbsen", async (req, res) => {
   const { userId, imageUrl, etalaseUrl, location } = req.body;
   const today = new Date();
@@ -360,7 +317,30 @@ app.put("/absen-pulang/:userId", async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 });
+app.get("/getTime", async (req, res) => {
+  const { userId, date } = req.query;
+  if (!userId || !date) {
+    return res.status(400).json({ message: "User ID and date are required." });
+  }
+  try {
+    // Query to check if there is an attendance record for the user on the given date
+    const [rows] = await pool.query(
+      "SELECT absen_time,pulang_time,id_absen FROM absen WHERE id_akun = ? AND tanggal_absen = ?",
+      [userId, date]
+    );
 
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Attendance record not found." });
+    }
+
+    const { absen_time, pulang_time, id_absen } = rows[0];
+    console.log(absen_time, pulang_time, id_absen);
+    return res.status(200).json({ absen_time, pulang_time });
+  } catch (error) {
+    console.error("Error checking attendance:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+});
 app.get("/checkAttendance", async (req, res) => {
   const { userId, date } = req.query;
 
@@ -388,12 +368,36 @@ app.get("/table-izin-karyawan/:userId", async (req, res) => {
   const { userId } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT tanggal_izin ,alasan,foto,tipe,status FROM izin WHERE id_akun = ${userId} ORDER BY id_izin DESC`
+      `SELECT tanggal_izin ,alasan,tipe,status FROM izin WHERE id_akun = ${userId} ORDER BY id_izin DESC`
     );
     res.json(rows);
   } catch (error) {
     console.error("Error fetching attendance:", error);
     res.status(500).json({ error: "Failed to fetch attendance data." });
+  }
+});
+app.get("/table-izin-admin", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT i.id_izin, u.nama_karyawan, i.tanggal_izin, i.alasan,i.tipe,i.status ` +
+        "FROM izin i " +
+        "JOIN user u ON i.id_akun = u.id_akun " +
+        ` ORDER BY id_izin DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching attendance:", error);
+    res.status(500).json({ error: "Failed to fetch attendance data." });
+  }
+});
+app.get("/table-sales", async (req, res) => {
+  try {
+    // Query to fetch attendance data for the user
+    const [rows] = await pool.query("SELECT * FROM user");
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching sales:", error);
+    res.status(500).json({ error: "Failed to fetch sales data." });
   }
 });
 app.get("/checkHome", async (req, res) => {
@@ -421,7 +425,7 @@ app.get("/checkHome", async (req, res) => {
 
 app.post("/uploadIzin", async (req, res) => {
   const { userId, date } = req.query;
-  const { imageLink, alasanInput, value } = req.body;
+  const { alasanInput, value } = req.body;
 
   if (!userId || !date) {
     return res.status(400).json({ message: "User ID and date are required." });
@@ -430,8 +434,8 @@ app.post("/uploadIzin", async (req, res) => {
   try {
     // Query to check if there is an attendance record for the user on the given date
     const [detailResultIzin] = await pool.query(
-      "INSERT INTO izin (id_akun, tanggal_izin, alasan, foto, tipe) VALUES (?, ?, ?, ?, ?)",
-      [userId, date, alasanInput, imageLink, value] // Use null instead of NULL
+      "INSERT INTO izin (id_akun, tanggal_izin, alasan, tipe) VALUES (?, ?, ?, ?)",
+      [userId, date, alasanInput, value] // Use null instead of NULL
     );
 
     const id_izin = detailResultIzin.insertId; // Get the id of the inserted row

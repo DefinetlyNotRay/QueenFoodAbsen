@@ -24,13 +24,10 @@ const izin = () => {
   const [tableIzinData, setIzinTableData] = useState([
     ["1", "Alex", "a", "Approve"],
   ]);
-  const izinTableHead = ["No", "Tanggal", "Alasan", "Foto", "Tipe", "Status"];
+  const izinTableHead = ["No", "Tanggal", "Alasan", "Tipe", "Status"];
 
   // Define the column widths for each column
-  const widthArr = [40, 100, 150, 80, 80, 100];
-
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null); // Store the selected image URL
+  const widthArr = [40, 100, 150, 80, 100];
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -77,15 +74,6 @@ const izin = () => {
         index + 1,
         row.tanggal_izin.split("T")[0],
         row.alasan,
-        <TouchableOpacity key={index} onPress={() => openModal(row.foto)}>
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: row.foto }}
-              style={styles.image}
-              alt={`Foto ${row.nama_karyawan}`}
-            />
-          </View>
-        </TouchableOpacity>,
         row.tipe,
         row.status,
       ]);
@@ -102,18 +90,6 @@ const izin = () => {
 
   const closeSidenav = () => {
     setSidenavVisible(false);
-  };
-
-  // Open the modal and set the selected image
-  const openModal = (imageUri) => {
-    setSelectedImage(imageUri);
-    setModalVisible(true);
-  };
-
-  // Close the modal
-  const closeModal = () => {
-    setModalVisible(false);
-    setSelectedImage(null);
   };
 
   return (
@@ -169,24 +145,6 @@ const izin = () => {
           </View>
         </ScrollView>
       </View>
-
-      {/* Modal for displaying full image */}
-      <Modal
-        visible={isModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={closeModal}
-      >
-        <TouchableOpacity style={styles.modalContainer} onPress={closeModal}>
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={styles.fullImage}
-              resizeMode="contain"
-            />
-          )}
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };

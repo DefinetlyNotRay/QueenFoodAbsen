@@ -1,9 +1,14 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import AntDesign from '@expo/vector-icons/AntDesign';
-import { Link, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import React, { useEffect } from "react";
+import { View, Text, TouchableOpacity, Alert } from "react-native";
+import AntDesign from "@expo/vector-icons/AntDesign";
+import { Link, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 
 interface SidenavProps {
   isVisible: boolean;
@@ -15,32 +20,28 @@ const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('isVisible:', isVisible);
+    console.log("isVisible:", isVisible);
     translateX.value = withTiming(isVisible ? 0 : -300, {
       duration: 300,
       easing: Easing.inOut(Easing.ease),
     });
   }, [isVisible]);
-  
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('level');
-    
-  
-      console.log('Navigating to /');  // Make sure you log the correct path here
-      
-      router.replace('/');  // Ensure this points to the correct path (login page)
-    
-      Alert.alert('Logged Out', 'You have been successfully logged out.');
+      await AsyncStorage.removeItem("authToken");
+      await AsyncStorage.removeItem("level");
+
+      console.log("Navigating to /"); // Make sure you log the correct path here
+
+      router.replace("/"); // Ensure this points to the correct path (login page)
+
+      Alert.alert("Logged Out", "You have been successfully logged out.");
     } catch (error) {
-      console.error('Logout failed', error);
-      Alert.alert('Error', 'Logout failed. Please try again.');
+      console.error("Logout failed", error);
+      Alert.alert("Error", "Logout failed. Please try again.");
     }
   };
-  
-  
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -49,7 +50,24 @@ const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
   });
 
   return (
-    <Animated.View style={[animatedStyle, { position: 'absolute', top: 0, left: 0, height: '100%', width: 250, backgroundColor: 'white', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 10, zIndex: 1000 }]}>
+    <Animated.View
+      style={[
+        animatedStyle,
+        {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: 250,
+          backgroundColor: "white",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.5,
+          shadowRadius: 10,
+          zIndex: 1000,
+        },
+      ]}
+    >
       <View className="flex flex-col bg-white  justify-between pb-14 px-4 pt-10 h-[105vh]">
         <View>
           <View className="flex flex-row items-center justify-between">
@@ -60,10 +78,19 @@ const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
           </View>
 
           <TouchableOpacity onPress={onClose} className="mt-4">
-            <Link href="/AdminPage" className="text-base">Home</Link>
+            <Link href="/AdminPage" className="text-base">
+              Home
+            </Link>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} className="mt-4">
-            <Link href="/IzinTable" className="text-base">Izin List</Link>
+            <Link href="/createSales" className="text-base">
+              Create Sales
+            </Link>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} className="mt-4">
+            <Link href="/izinAdmin" className="text-base">
+              Izin List
+            </Link>
           </TouchableOpacity>
         </View>
 
