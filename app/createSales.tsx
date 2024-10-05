@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
   ScrollView,
+  TextInput,
   Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -16,16 +17,19 @@ import { BlurView } from "expo-blur";
 import { Table, Row, Rows } from "react-native-table-component";
 import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
-import { Dropdown } from "react-native-element-dropdown";
-import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import axios from "axios";
 
 const createSales = () => {
   const apiUrl = NGROK_API;
 
   const router = useRouter();
+  const [namaSales, setNamaSales] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   const [userTable, setUserTable] = useState([["1", "Alex", "a", "Approve"]]);
 
+  const [tambahModal, setTambahModalVisible] = useState(false);
   const izinTableHead = [
     "No",
     "Nama Sales",
@@ -34,7 +38,6 @@ const createSales = () => {
     "Level",
     "Action",
   ];
-
   // Define the column widths for each column
   const widthArr = [40, 150, 100, 150, 80, 100];
 
@@ -139,8 +142,31 @@ const createSales = () => {
       { text: "Batal", style: "cancel" },
       {
         text: "Tambah",
-        onPress: () => {
-          console.log("Tambah data baru");
+        onPress: async () => {
+          const token = await AsyncStorage.getItem("authToken");
+          const userId = await AsyncStorage.getItem("userId");
+          if (!userId) {
+            throw new Error("User ID not found in AsyncStorage");
+          }
+          // Fetch Izin Data
+          const salesData = {
+            namaSales,
+            username,
+            password,
+          };
+          // Fetch Izin Data
+          const response = await axios.post(`${apiUrl}/createSales`, salesData);
+
+          if (response.status === 200) {
+            Alert.alert("Success", "Sales created successfully.");
+            setNamaSales("");
+            setUsername("");
+            setPassword("");
+            fetchData();
+            setTambahModalVisible(false);
+          } else {
+            Alert.alert("Error", "Sales creatiion failed.");
+          }
         },
       },
     ]);
@@ -170,11 +196,68 @@ const createSales = () => {
         <View>
           <TouchableOpacity
             className="bg-[#159847] p-2 mb-1 rounded"
-            onPress={() => handleAddUser()}
+            onPress={() => setTambahModalVisible(true)}
           >
             <Text className="text-white text-center text-[10px]">Tambah</Text>
           </TouchableOpacity>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={tambahModal}
+            onRequestClose={() => setTambahModalVisible(!tambahModal)}
+          >
+            <View style={styles.modalBackground}>
+              <View style={styles.modalView}>
+                <View>
+                  <Text className="font-extrabold">Nama Sales</Text>
+                  <TextInput
+                    editable
+                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                    maxLength={40}
+                    onChangeText={(namaSales) => setNamaSales(namaSales)}
+                    value={namaSales}
+                  />
+                </View>
+                <View className="mt-2">
+                  <Text className="font-extrabold">Username</Text>
+                  <TextInput
+                    editable
+                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                    maxLength={40}
+                    onChangeText={(username) => setUsername(username)}
+                    value={username}
+                  />
+                </View>
+                <View className="mt-2">
+                  <Text className="font-extrabold">Password</Text>
+                  <TextInput
+                    editable
+                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                    maxLength={40}
+                    onChangeText={(password) => setPassword(password)}
+                    secureTextEntry
+                    value={password}
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={handleAddUser}
+                  className="bg-[#159847] w-[75vw] mt-2 py-2 px-2"
+                >
+                  <Text className="text-sm font-bold text-center text-white">
+                    Submit
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setTambahModalVisible(!tambahModal)}
+                >
+                  <Text style={styles.textStyle}>Hide Modal</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </View>
+
         <View className="flex flex-row gap-4">
           {/* Wrap table in horizontal ScrollView for horizontal scroll */}
           <ScrollView horizontal={true}>
@@ -222,6 +305,34 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalBackground: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 35,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  closeButton: {
+    backgroundColor: "#F23737",
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    marginTop: 20,
   },
   tableContainer: {
     maxHeight: 700, // Adjust this to fit your screen

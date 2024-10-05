@@ -4,12 +4,12 @@ const mysql = require("mysql2/promise"); // Use promise-based version
 const bodyparser = require("body-parser");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
+const { Expo } = require("expo-server-sdk");
 
 const app = express();
 const port = 5000;
+let expo = new Expo();
 
 cloudinary.config({
   cloud_name: "dezla8wit",
@@ -90,16 +90,110 @@ const checkAndAddAlphaEntries = async () => {
 // Schedule the job to run every day at midnight
 cron.schedule("0 0 * * *", checkAndAddAlphaEntries); // Runs at 00:00 (midnight)
 
-app.post("/generate-upload-url", (req, res) => {
-  const uploadURL = "Your generated UploadThing URL here"; // Replace with actual code to generate the URL
-  res.json({ uploadURL });
+app.post("/notifyUser", async (req, res) => {
+  const { expoPushToken, status } = req.body; // Get the push token and approval/rejection status
+
+  if (!Expo.isExpoPushToken(expoPushToken)) {
+    console.error(`Push token ${expoPushToken} is not a valid Expo push token`);
+    return res.status(400).send("Invalid push token");
+  }
+
+  // Create the message to send
+  const messages = [];
+  messages.push({
+    to: expoPushToken,
+    sound: "default",
+    title: "Permission Request Update",
+    body: `Your request has been ${status}.`,
+    data: { withSome: "data" },
+  });
+
+  // Send the notification
+  let chunks = expo.chunkPushNotifications(messages);
+  let tickets = [];
+  for (let chunk of chunks) {
+    try {
+      let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+      tickets.push(...ticketChunk);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  res.status(200).send("Notification sent");
+});
+app.post("/expo-push-token", async (req, res) => {
+  const { userId, expoPushToken } = req.body;
+
+  console.log("Received userId:", userId);
+  console.log("Received expoPushToken:", expoPushToken);
+
+  if (!userId || !expoPushToken) {
+    return res.status(400).send("Missing userId or expoPushToken");
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    try {
+      // Check for existing token
+      let [existingToken] = await connection.query(
+        "SELECT * FROM expo_push_tokens WHERE id_akun = ?",
+        [userId]
+      );
+      console.log("Existing token:", existingToken);
+
+      if (existingToken.length > 0) {
+        // Update existing token
+        await connection.query(
+          "UPDATE expo_push_tokens SET expo_push_token = ? WHERE id_akun = ?",
+          [expoPushToken, userId]
+        );
+        console.log("Updated existing token for userId:", userId);
+      } else {
+        // Insert new token
+        await connection.query(
+          "INSERT INTO expo_push_tokens (id_akun, expo_push_token) VALUES (?, ?)",
+          [userId, expoPushToken]
+        );
+        console.log("Inserted new token for userId:", userId);
+      }
+      res.status(200).send("Push token saved successfully.");
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Error saving push token:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-app.post("/accept-status/", async (req, res) => {
-  const { id_izin } = req.body;
+// Utility function for sending notifications
+const sendNotification = async (expoPushToken, title, body, data) => {
+  const messages = [
+    {
+      to: expoPushToken,
+      sound: "default",
+      title,
+      body,
+      data,
+    },
+  ];
 
-  if (!id_izin) {
-    return res.status(400).json({ error: "Missing id_izin" });
+  let chunks = expo.chunkPushNotifications(messages);
+  let tickets = [];
+  for (let chunk of chunks) {
+    let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+    tickets.push(...ticketChunk);
+  }
+
+  console.log("Notification sent:", tickets);
+};
+
+app.post("/accept-status/", async (req, res) => {
+  const { id_izin, id_akun, today, value } = req.body;
+
+  if (!id_izin || !id_akun) {
+    return res.status(400).json({ error: "Missing id_izin or id_akun" });
   }
 
   try {
@@ -109,7 +203,36 @@ app.post("/accept-status/", async (req, res) => {
     const [result] = await pool.query(update, values);
 
     if (result.affectedRows > 0) {
-      console.log(`Status updated to "Approved" for id_izin: ${id_izin}`); // Log successful update
+      const [detailResult] = await pool.query(
+        "INSERT INTO detail_absen (id_akun, foto_diri, foto_etalase, lokasi, id_izin) VALUES (?, ?, ?, ?, ?)",
+        [id_akun, null, null, null, id_izin]
+      );
+
+      const id_detail = detailResult.insertId;
+
+      await pool.query(
+        "INSERT INTO absen (id_akun, tanggal_absen, detail, id_detail) VALUES (?, ?, ?, ?)",
+        [id_akun, today, value, id_detail]
+      );
+
+      console.log(`Status updated to "Approved" for id_izin: ${id_izin}`);
+
+      const [rows] = await pool.query(
+        "SELECT expo_push_token FROM expo_push_tokens WHERE id_akun = ?",
+        [id_akun]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).send("User not found");
+      }
+
+      const expoPushToken = rows[0].expo_push_token;
+      await sendNotification(
+        expoPushToken,
+        `Permission Request`,
+        `Your permission request has been Approved!`,
+        { id_izin }
+      );
       return res
         .status(200)
         .json({ message: "Status updated to Accepted successfully" });
@@ -123,10 +246,10 @@ app.post("/accept-status/", async (req, res) => {
 });
 
 app.post("/reject-status/", async (req, res) => {
-  const { id_izin } = req.body;
+  const { id_izin, id_akun } = req.body; // Include id_akun
 
-  if (!id_izin) {
-    return res.status(400).json({ error: "Missing id_izin" });
+  if (!id_izin || !id_akun) {
+    return res.status(400).json({ error: "Missing id_izin or id_akun" });
   }
 
   try {
@@ -136,7 +259,24 @@ app.post("/reject-status/", async (req, res) => {
     const [result] = await pool.query(update, values);
 
     if (result.affectedRows > 0) {
-      console.log(`Status updated to "Rejected" for id_izin: ${id_izin}`); // Log successful update
+      console.log(`Status updated to "Rejected" for id_izin: ${id_izin}`);
+
+      const [rows] = await pool.query(
+        "SELECT expo_push_token FROM expo_push_tokens WHERE id_akun = ?",
+        [id_akun]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).send("User not found");
+      }
+
+      const expoPushToken = rows[0].expo_push_token;
+      await sendNotification(
+        expoPushToken,
+        `Permission Request`,
+        `Your permission request has been Rejected!`,
+        { id_izin }
+      );
       return res
         .status(200)
         .json({ message: "Status updated to Rejected successfully" });
@@ -167,7 +307,7 @@ app.get("/attendance/:userId", async (req, res) => {
 app.get("/table-absen", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT a.id_absen,u.nama_karyawan,a.absen_time,a.pulang_time,a.detail FROM absen a JOIN user u ON a.id_akun = u.id_akun"
+      "SELECT a.id_absen,u.nama_karyawan,a.absen_time,a.pulang_time,a.detail FROM absen a JOIN user u ON a.id_akun = u.id_akun ORDER BY tanggal_absen DESC"
     );
     res.json(rows);
   } catch (error) {
@@ -178,7 +318,7 @@ app.get("/table-absen", async (req, res) => {
 app.get("/table-izin", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT i.id_izin, u.nama_karyawan, i.tanggal_izin, i.alasan " +
+      "SELECT i.id_izin,i.id_akun, u.nama_karyawan, i.tanggal_izin,i.tipe, i.alasan " +
         "FROM izin i " +
         "JOIN user u ON i.id_akun = u.id_akun " +
         'WHERE DATE(i.tanggal_izin) = CURDATE() AND i.status = "Pending"'
@@ -368,7 +508,7 @@ app.get("/table-izin-karyawan/:userId", async (req, res) => {
   const { userId } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT tanggal_izin ,alasan,tipe,status FROM izin WHERE id_akun = ${userId} ORDER BY id_izin DESC`
+      `SELECT id_akun,tanggal_izin ,alasan,tipe,status FROM izin WHERE id_akun = ${userId} ORDER BY id_izin DESC`
     );
     res.json(rows);
   } catch (error) {
@@ -398,6 +538,21 @@ app.get("/table-sales", async (req, res) => {
   } catch (error) {
     console.error("Error fetching sales:", error);
     res.status(500).json({ error: "Failed to fetch sales data." });
+  }
+});
+app.post("/createSales", async (req, res) => {
+  const { namaSales, username, password } = req.body;
+  try {
+    // Insert data into sales
+    await pool.query(
+      "INSERT INTO user (nama_karyawan, username, password, level) VALUES (?, ?, ?, ?)",
+      [namaSales, username, password, "user"]
+    );
+    res.status(200).json({ message: "Sales created successfully" });
+    console.log("Sales created successfully");
+  } catch (error) {
+    console.error("Error creating sales:", error);
+    res.status(500).json({ error: "Failed to create sales" });
   }
 });
 app.get("/checkHome", async (req, res) => {
@@ -433,24 +588,11 @@ app.post("/uploadIzin", async (req, res) => {
 
   try {
     // Query to check if there is an attendance record for the user on the given date
-    const [detailResultIzin] = await pool.query(
+    await pool.query(
       "INSERT INTO izin (id_akun, tanggal_izin, alasan, tipe) VALUES (?, ?, ?, ?)",
       [userId, date, alasanInput, value] // Use null instead of NULL
     );
 
-    const id_izin = detailResultIzin.insertId; // Get the id of the inserted row
-    const [detailResult] = await pool.query(
-      "INSERT INTO detail_absen (id_akun, foto_diri, foto_etalase, lokasi,id_izin) VALUES (?, ?, ?, ?, ?)",
-      [userId, null, null, null, id_izin]
-    );
-
-    const id_detail = detailResult.insertId; // Get the id of the inserted row
-
-    // Insert data into absen, and let absen_time default to the current timestamp
-    await pool.query(
-      "INSERT INTO absen (id_akun, tanggal_absen, detail, id_detail) VALUES (?, ?, ?, ?)",
-      [userId, date, value, id_detail] // Use null instead of NULL
-    );
     res.status(200).json({ message: "Izin uploaded successfully" });
 
     // Insert data into absen, and let absen_time default to the current timestamp
@@ -459,6 +601,7 @@ app.post("/uploadIzin", async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 });
+
 app.get("/checkIzin", async (req, res) => {
   const { userId, date } = req.query;
 
@@ -467,9 +610,9 @@ app.get("/checkIzin", async (req, res) => {
   }
 
   try {
-    // Query to check if there is an attendance record for the user on the given date
+    // Corrected query to check for 'Izin' or 'izin' in the detail field
     const [rows] = await pool.query(
-      "SELECT COUNT(*) AS count FROM izin WHERE id_akun = ? AND tanggal_izin = ?",
+      "SELECT COUNT(*) AS count FROM absen WHERE id_akun = ? AND tanggal_absen = ? AND (detail = 'Sakit' OR detail = 'Izin')",
       [userId, date]
     );
 
@@ -481,6 +624,30 @@ app.get("/checkIzin", async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 });
+
+app.get("/checkIzinApproveOrReject", async (req, res) => {
+  const { userId, date } = req.query;
+
+  if (!userId || !date) {
+    return res.status(400).json({ message: "User ID and date are required." });
+  }
+
+  try {
+    // Query to check for 'Pending', 'Approved', or 'Rejected' status in the 'status' field
+    const [rows] = await pool.query(
+      "SELECT COUNT(*) AS count FROM izin WHERE id_akun = ? AND tanggal_izin = ? AND (status = 'Pending' OR status = 'Approved')",
+      [userId, date]
+    );
+
+    const hasIzinStatus = rows[0].count > 0; // true if any matching record is found
+    console.log(userId, date, hasIzinStatus);
+    return res.status(200).json({ hasIzinStatus });
+  } catch (error) {
+    console.error("Error checking izin status:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

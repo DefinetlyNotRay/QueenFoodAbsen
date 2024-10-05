@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, JSX, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -18,6 +18,7 @@ import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
 import { Dropdown } from "react-native-element-dropdown";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import { useFocusEffect } from "@react-navigation/native";
 
 const izinAdmin = () => {
   const apiUrl = NGROK_API;
@@ -32,7 +33,19 @@ const izinAdmin = () => {
   const [tableIzinData, setIzinTableData] = useState([
     ["1", "Alex", "a", "Approve"],
   ]);
-  const [filteredData, setFilteredData] = useState(tableIzinData);
+  const [filteredData, setFilteredData] = useState<
+    (string | number | JSX.Element)[][]
+  >([]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(); // Call your data fetching function when the screen is focused
+
+      // Optionally, you can return a cleanup function
+      return () => {
+        // Clean up if necessary
+      };
+    }, []) // Empty dependency array ensures this runs only on focus
+  );
   const items = [
     { label: "None", value: "None" },
     { label: "Sakit", value: "Sakit" },
@@ -114,52 +127,56 @@ const izinAdmin = () => {
       }
 
       const izinData = await izinResponse.json();
-      const formattedIzinData = izinData.map((row, index) => [
-        index + 1,
-        row.nama_karyawan,
-        row.tanggal_izin.split("T")[0],
-        row.alasan,
-        row.tipe,
-        row.status,
-        <View className="flex flex-col justify-center px-2 py-2 space-y-2">
-          {row.status === "Pending" ? (
-            <>
-              {/* Approve Button */}
-              <TouchableOpacity
-                className="bg-[#228E47] p-1 rounded"
-                onPress={() => handleApprove(row.id_izin)}
-              >
-                <Text className="text-white text-center text-[10px]">
-                  Approve
-                </Text>
-              </TouchableOpacity>
+      const formattedIzinData = izinData.map((row, index) => {
+        const date = new Date(row.tanggal_izin);
+        const formattedDate = formatDate(date);
+        return [
+          index + 1,
+          row.nama_karyawan,
+          formattedDate, // Use the corrected date here
+          row.alasan,
+          row.tipe,
+          row.status,
+          <View className="flex flex-col justify-center px-2 py-2 space-y-2">
+            {row.status === "Pending" ? (
+              <>
+                {/* Approve Button */}
+                <TouchableOpacity
+                  className="bg-[#228E47] p-1 rounded"
+                  onPress={() => handleApprove(row.id_izin)}
+                >
+                  <Text className="text-white text-center text-[10px]">
+                    Approve
+                  </Text>
+                </TouchableOpacity>
 
-              {/* Reject Button */}
+                {/* Reject Button */}
+                <TouchableOpacity
+                  className="bg-[#F23737] p-1 rounded"
+                  onPress={() => handleReject(row.id_izin)}
+                >
+                  <Text className="text-white text-center text-[10px]">
+                    Reject
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              // Conditionally render the approved/rejected button with reduced opacity
               <TouchableOpacity
-                className="bg-[#F23737] p-1 rounded"
-                onPress={() => handleReject(row.id_izin)}
+                className={`p-1 rounded ${
+                  row.status === "Approved" ? "bg-[#228E47]" : "bg-[#F23737]"
+                }`}
+                disabled={true} // Disable the button when it's not pending
+                style={{ opacity: 0.6 }} // Lower opacity to indicate it's not clickable
               >
-                <Text className="text-white text-center text-[10px]">
-                  Reject
+                <Text className="text-white text-center text-[10px] capitalize">
+                  {row.status} {/* Will show "approved" or "rejected" */}
                 </Text>
               </TouchableOpacity>
-            </>
-          ) : (
-            // Conditionally render the approved/rejected button with reduced opacity
-            <TouchableOpacity
-              className={`p-1 rounded ${
-                row.status === "Approved" ? "bg-[#228E47]" : "bg-[#F23737]"
-              }`}
-              disabled={true} // Disable the button when it's not pending
-              style={{ opacity: 0.6 }} // Lower opacity to indicate it's not clickable
-            >
-              <Text className="text-white text-center text-[10px] capitalize">
-                {row.status} {/* Will show "approved" or "rejected" */}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>,
-      ]);
+            )}
+          </View>,
+        ];
+      });
 
       setIzinTableData(formattedIzinData);
     } catch (error) {
@@ -169,12 +186,12 @@ const izinAdmin = () => {
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear(); // Gunakan tahun lengkap
-    return `${year}-${month}-${day}`; // Format: yyyy-MM-dd
+    const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
+    return `${day}/${month}/${year}`;
   };
 
   const parseDate = (dateString) => {
-    const [year, month, day] = dateString.split("-");
+    const [year, month, day] = dateString.split("/");
     return new Date(year, month - 1, day); // month is zero-based in JavaScript
   };
 
@@ -185,9 +202,8 @@ const izinAdmin = () => {
 
       const filtered = tableIzinData.filter((row) => {
         const izinDate = parseDate(row[2]); // 'Tanggal' column
-        const izinType = row[4]; // 'Detail' column where the attendance type is stored
+        const izinType = row[4]; // 'Tipe' column where the attendance type is stored
 
-        // Check if the date matches the selected range
         const dateMatch =
           startDate && endDate
             ? izinDate >= startDate && izinDate <= endDate
@@ -195,18 +211,59 @@ const izinAdmin = () => {
             ? izinDate.toDateString() === startDate.toDateString()
             : endDate
             ? izinDate.toDateString() === endDate.toDateString()
-            : true; // No date filter applied
+            : true;
 
-        // Check if the attendance type matches the selected value
         const attendanceMatch =
           value && value !== "None" ? izinType === value : true;
 
         return dateMatch && attendanceMatch;
       });
 
-      console.log("Filtered Data:", filtered); // Log the filtered data
+      const indexedFilteredData = filtered.map((row, index) => [
+        index + 1, // New display index
+        row[1], // nama_karyawan
+        row[2], // tanggal_izin
+        row[3], // alasan
+        row[4], // tipe
+        row[5], // status
+        row[6], // Original id_izin (keep this!)
+        <View className="flex flex-col justify-center h-3 px-2 py-2 space-y-2">
+          {row[5] === "Pending" ? (
+            <>
+              <TouchableOpacity
+                className="bg-[#228E47] p-1 rounded"
+                onPress={() => handleApprove(row[6])} // Use the original id_izin
+              >
+                <Text className="text-white text-center text-[10px]">
+                  Approve
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="bg-[#F23737] p-1 rounded"
+                onPress={() => handleReject(row[6])} // Use the original id_izin
+              >
+                <Text className="text-white text-center text-[10px]">
+                  Reject
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              className={`p-1 rounded ${
+                row[5] === "Approved" ? "bg-[#228E47]" : "bg-[#F23737]"
+              }`}
+              disabled={true}
+              style={{ opacity: 0.6 }}
+            >
+              <Text className="text-white text-center text-[10px] capitalize">
+                {row[5]}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>,
+      ]);
 
-      setFilteredData(filtered.length > 0 ? filtered : [["No data found"]]); // Set filtered data or show no data found
+      setFilteredData(indexedFilteredData);
     };
 
     filterData();
@@ -214,6 +271,14 @@ const izinAdmin = () => {
 
   const handleApprove = async (id_izin) => {
     const token = await AsyncStorage.getItem("authToken");
+
+    if (!token) {
+      Alert.alert("Error", "Authorization token not found");
+      return;
+    }
+
+    console.log("Approving izin with ID:", id_izin); // Debug id_izin
+
     try {
       const response = await fetch(`${apiUrl}/accept-status/`, {
         method: "POST",
@@ -221,10 +286,11 @@ const izinAdmin = () => {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id_izin }),
+        body: JSON.stringify({ id_izin }), // Ensure id_izin is correctly passed
       });
 
       const responseData = await response.json(); // Parse the response
+
       if (!response.ok) {
         console.log("Error response data:", responseData);
         Alert.alert("Error", responseData.message || "Failed to approve izin");
@@ -235,6 +301,7 @@ const izinAdmin = () => {
       fetchData(); // Refresh the table data
     } catch (error) {
       console.error("Failed to approve izin:", error);
+      Alert.alert("Error", "An error occurred while approving izin");
     }
   };
 

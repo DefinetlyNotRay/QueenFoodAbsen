@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Text, TouchableOpacity, Alert } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Alert,
+  PermissionsAndroid,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,6 +20,10 @@ import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
+import RNFS from "react-native-fs";
+import Share from "react-native-share";
+import * as FileSystem from "expo-file-system";
+
 const AdminPage: React.FC = () => {
   const router = useRouter();
   const apiUrl = NGROK_API;
@@ -21,6 +33,16 @@ const AdminPage: React.FC = () => {
     attendedToday: 0,
     izinToday: 0,
   });
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(); // Call your data fetching function when the screen is focused
+
+      // Optionally, you can return a cleanup function
+      return () => {
+        // Clean up if necessary
+      };
+    }, []) // Empty dependency array ensures this runs only on focus
+  );
   const [isSidenavVisible, setSidenavVisible] = useState(false);
   const [date, setDate] = useState(new Date());
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
@@ -90,13 +112,13 @@ const AdminPage: React.FC = () => {
         <View className="flex flex-col justify-center px-2 py-2 space-y-2">
           <TouchableOpacity
             className="bg-[#228E47] p-1 rounded"
-            onPress={() => handleApprove(row.id_izin)}
+            onPress={() => handleApprove(row.id_izin, row.id_akun, row.tipe)}
           >
             <Text className="text-white text-center text-[10px]">Approve</Text>
           </TouchableOpacity>
           <TouchableOpacity
             className="bg-[#F23737] p-1 rounded"
-            onPress={() => handleReject(row.id_izin)}
+            onPress={() => handleReject(row.id_izin, row.id_akun, row.tipe)}
           >
             <Text className="text-white text-center text-[10px]">Reject</Text>
           </TouchableOpacity>
@@ -143,44 +165,60 @@ const AdminPage: React.FC = () => {
     }
   };
 
-  const handleApprove = async (id_izin) => {
+  const handleApprove = async (id_izin, id_akun, value) => {
     const token = await AsyncStorage.getItem("authToken");
+    const today = new Date().toISOString().split("T")[0];
+    Alert.alert("Approve Izin", "Approve this request?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Approve",
+        onPress: async () => {
+          const response = await fetch(`${apiUrl}/accept-status/`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json", // Specify content type
+            },
+            body: JSON.stringify({ id_izin, id_akun, value, today }), // Send id_izin in the body
+          });
 
-    const response = await fetch(`${apiUrl}/accept-status/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json", // Specify content type
+          if (!response.ok) {
+            Alert.alert("Error", "Failed to approve izin");
+            return;
+          }
+
+          fetchData();
+        },
       },
-      body: JSON.stringify({ id_izin }), // Send id_izin in the body
-    });
-
-    if (!response.ok) {
-      Alert.alert("Error", "Failed to approve izin");
-      return;
-    }
-
-    fetchData();
+    ]);
   };
 
-  const handleReject = async (id_izin) => {
+  const handleReject = async (id_izin, id_akun, value) => {
     const token = await AsyncStorage.getItem("authToken");
+    const today = new Date().toISOString().split("T")[0];
+    Alert.alert("Reject Request", "Reject this request?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reject",
+        onPress: async () => {
+          const response = await fetch(`${apiUrl}/reject-status/`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json", // Specify content type
+            },
+            body: JSON.stringify({ id_izin, id_akun, today, value }), // Send id_izin in the body
+          });
 
-    const response = await fetch(`${apiUrl}/reject-status/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json", // Specify content type
+          if (!response.ok) {
+            Alert.alert("Error", "Failed to reject izin");
+            return;
+          }
+
+          fetchData();
+        },
       },
-      body: JSON.stringify({ id_izin }), // Send id_izin in the body
-    });
-
-    if (!response.ok) {
-      Alert.alert("Error", "Failed to reject izin");
-      return;
-    }
-
-    fetchData();
+    ]);
   };
 
   useEffect(() => {
@@ -287,7 +325,12 @@ const AdminPage: React.FC = () => {
         return dateMatch && attendanceMatch;
       });
 
-      setFilteredData(filtered);
+      // Reset the index for the filtered data
+      const indexedFilteredData = filtered.map((row, index) => {
+        return [index + 1, ...row.slice(1)]; // Add the new index to the first column
+      });
+
+      setFilteredData(indexedFilteredData.map((row) => row.map(String)));
     };
 
     filterData();
@@ -405,6 +448,14 @@ const AdminPage: React.FC = () => {
                 )}
               </Table>
             </ScrollView>
+            <TouchableOpacity
+              style={styles.exportButton}
+              className="w-[30%] rounded-md ml-64 mt-2 px-2 py-2"
+            >
+              <Text className="text-xs text-center text-white">
+                Export To Excel
+              </Text>
+            </TouchableOpacity>
           </View>
           <Text className="mt-2 mb-2 text-xl font-semibold">Izin</Text>
           <View style={styles.tableContainer}>
@@ -438,6 +489,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: 1,
+  },
+  exportButton: {
+    backgroundColor: "#159847",
   },
   overlay: {
     flex: 1,

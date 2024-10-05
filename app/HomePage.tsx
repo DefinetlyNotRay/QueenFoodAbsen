@@ -9,6 +9,8 @@ import {
   Image,
   TextInput,
 } from "react-native";
+import * as Notifications from "expo-notifications";
+import * as Permissions from "expo-permissions";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,6 +22,9 @@ import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import * as Location from "expo-location";
 import { NGROK_API } from "@env";
+import Constants from "expo-constants";
+import * as Device from "expo-device";
+import { Platform } from "react-native";
 
 interface DecodedToken {
   id: string;
@@ -57,6 +62,7 @@ const HomePage: React.FC = () => {
 
   const router = useRouter();
   const apiUrl = NGROK_API;
+  const [expoPushToken, setExpoPushToken] = useState("");
 
   // Constants
   const statusColors = {
@@ -77,7 +83,99 @@ const HomePage: React.FC = () => {
     checkAttendance();
     checkHome();
     checkIzin();
+    checkIzinApproveOrReject();
     getTime();
+  }, []);
+  useEffect(() => {
+    const getPermissions = async () => {
+      const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
+      if (status !== "granted") {
+        const { status: newStatus } = await Permissions.askAsync(
+          Permissions.NOTIFICATIONS
+        );
+        if (newStatus !== "granted") {
+          alert("You need to grant permission to receive notifications");
+        }
+      }
+    };
+
+    getPermissions();
+  }, []);
+  useEffect(() => {
+    const registerForPushNotificationsAsync = async () => {
+      if (Device.isDevice) {
+        const { status: existingStatus } =
+          await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== "granted") {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== "granted") {
+          alert("You need to grant permission to receive notifications");
+          return;
+        }
+
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
+        setExpoPushToken(token);
+        console.log("Expo Push Token:", token);
+
+        // Save the token to your backend
+        await saveTokenToBackend(token);
+      } else {
+        alert("Must use a physical device for push notifications");
+      }
+
+      if (Platform.OS === "android") {
+        Notifications.setNotificationChannelAsync("default", {
+          name: "default",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#FF231F7C",
+        });
+      }
+    };
+
+    registerForPushNotificationsAsync();
+  }, []);
+  const saveTokenToBackend = async (token) => {
+    const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
+    const response = await fetch(`${apiUrl}/expo-push-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Include the user's auth token if needed
+      },
+      body: JSON.stringify({ userId, expoPushToken: token }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to save push token:", response.status);
+      alert("Failed to save push token. Please try again.");
+    } else {
+      console.log("Push token saved successfully.");
+    }
+  };
+
+  console.log("Expo Push Token:", expoPushToken);
+  useEffect(() => {
+    const notificationListener = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log("Notification received:", notification);
+      }
+    );
+
+    const responseListener =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification response:", response);
+      });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
   }, []);
 
   useEffect(() => {
@@ -288,6 +386,31 @@ const HomePage: React.FC = () => {
     } catch (error) {
       console.error("Error checking izin status:", error);
       Alert.alert("Error", "Failed to check izin status.");
+    }
+  };
+
+  const checkIzinApproveOrReject = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const response = await axios.get(
+        `${apiUrl}/checkIzinApproveOrReject?userId=${userId}&date=${today}`
+      );
+
+      if (response.data.hasIzinStatus) {
+        setHasIzinToday(true);
+        console.log("Has Izin Today", hasIzinToday);
+      } else {
+        setHasIzinToday(false);
+        console.log("Has Izin Today", hasIzinToday);
+      }
+    } catch (error) {
+      console.error("Error checking izin Accept/Reject status:", error);
+      Alert.alert("Error", "Failed to check izin Accept/Reject status.");
     }
   };
 
