@@ -25,6 +25,7 @@ import { NGROK_API } from "@env";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
+import izin from "./izin";
 
 interface DecodedToken {
   id: string;
@@ -59,7 +60,7 @@ const HomePage: React.FC = () => {
   const [isSidenavVisible, setSidenavVisible] = useState(false);
   const [absenTime, setAbsenTime] = useState("");
   const [pulangTime, setPulangTime] = useState("");
-
+  const [locationDisplay, setLocationDisplay] = useState("");
   const router = useRouter();
   const apiUrl = NGROK_API;
   const [expoPushToken, setExpoPushToken] = useState("");
@@ -195,7 +196,7 @@ const HomePage: React.FC = () => {
       );
 
       // Mengakses data dari respons
-      const { absen_time, pulang_time } = response.data;
+      const { absen_time, pulang_time, lokasi } = response.data;
 
       if (absen_time) {
         // Mengkonversi waktu UTC ke waktu lokal untuk absen_time
@@ -208,7 +209,9 @@ const HomePage: React.FC = () => {
         setAbsenTime(timeAbsen); // Set absen time state
         console.log("Absen Time:", timeAbsen);
       }
-
+      if (lokasi) {
+        setLocationDisplay(lokasi);
+      }
       if (pulang_time) {
         // Mengkonversi waktu UTC ke waktu lokal untuk pulang_time (jika ada)
         const pulangDate = new Date(pulang_time);
@@ -499,13 +502,21 @@ const HomePage: React.FC = () => {
    * Retrieves the address from given coordinates
    */
   const getAddressFromCoordinates = async (latitude: any, longitude: any) => {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`;
+    const apiKey = "oQpDT61lYsQpX376bAf3aK1myogYGLLR"; // Replace with your TomTom API key
+    const url = `https://api.tomtom.com/search/2/reverseGeocode/${latitude},${longitude}.json?key=${apiKey}`;
 
     try {
       const response = await axios.get(url);
-      return response.data.display_name || "Address not found";
+      const addressData = response.data.addresses;
+
+      if (addressData.length > 0) {
+        const address = addressData[0].address.freeformAddress;
+        return address;
+      } else {
+        return "Address not found";
+      }
     } catch (error) {
-      console.error("Error fetching address:", error);
+      console.error("Error fetching address from TomTom:", error);
       return "Error fetching address";
     }
   };
@@ -662,36 +673,6 @@ const HomePage: React.FC = () => {
   };
 
   /**
-   * Uploads the absence request image to Cloudinary
-   */
-  const uploadIzinImageToCloudinary = async (imageUri: String) => {
-    const userId = await AsyncStorage.getItem("userId");
-    const formData = new FormData();
-    formData.append("file", {
-      uri: imageUri,
-      type: "image/jpeg",
-      name: `${userId}.jpg`,
-    });
-    formData.append("upload_preset", "my_upload_preset");
-
-    try {
-      const response = await axios.post(
-        "https://api.cloudinary.com/v1_1/dezla8wit/image/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      return response.data.secure_url;
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      throw error;
-    }
-  };
-
-  /**
    * Toggles the visibility of the side navigation
    */
   const toggleSidenav = () => {
@@ -805,7 +786,8 @@ const HomePage: React.FC = () => {
       Alert.alert("Error", "Failed to mark attendance.");
     }
   };
-  useEffect;
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const currentDay = new Date().getDay(); // 0 is Sunday, 1 is Monday, etc.
   return (
     <View style={{ flex: 1 }}>
       <Header onToggleSidenav={toggleSidenav} />
@@ -826,18 +808,21 @@ const HomePage: React.FC = () => {
 
       <View className="flex gap-2 p-5">
         <Text className="mb-2 text-xl font-extrabold">Absen Sales</Text>
-        <View className="bg-[#FDCE35] flex p-5 rounded-md w-full shadow-lg">
+        <View className="bg-[#990F66] flex p-5 rounded-md w-full shadow-lg">
           <View>
-            <Text className="font-bold text-white">Senin</Text>
-            <Text className="font-bold text-white">8:00 AM - 5:00 PM</Text>
+            <Text className="text-xl font-bold text-white ">
+              {days[currentDay]}
+            </Text>
           </View>
           <View>
-            <Text className="font-bold text-white">Lokasi:-</Text>
             <Text className="font-bold text-white">
-              Absen Masuk:{absenTime}
+              Lokasi: {locationDisplay}
             </Text>
             <Text className="font-bold text-white">
-              Absen Keluar:{pulangTime}
+              Absen Masuk: {absenTime}
+            </Text>
+            <Text className="font-bold text-white">
+              Absen Pulang: {pulangTime}
             </Text>
           </View>
         </View>
@@ -860,19 +845,20 @@ const HomePage: React.FC = () => {
           >
             <View style={styles.modalBackground}>
               <View style={styles.modalView}>
-                <Text>Take a Selfie Right Now</Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={takePhoto}
-                >
-                  <Text style={styles.textStyle}>Take Photo</Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setAbsenModalVisible(!absenModal)}
                 >
-                  <Text style={styles.textStyle}>Hide Modal</Text>
+                  <Text style={styles.closeButtonText}>X</Text>
+                </TouchableOpacity>
+
+                <Text>Take a Selfie Right Now</Text>
+
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={takePhoto}
+                >
+                  <Text style={styles.textStyle}>Take Photo</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -887,7 +873,7 @@ const HomePage: React.FC = () => {
               <View style={styles.modalView}>
                 <Text>Send Your Current Location</Text>
                 <TouchableOpacity
-                  style={styles.closeButton}
+                  style={styles.uploadButton}
                   onPress={getLocationData}
                 >
                   <Text style={styles.textStyle}>Send Location</Text>
@@ -905,7 +891,7 @@ const HomePage: React.FC = () => {
               <View style={styles.modalView}>
                 <Text>Send Display Photo</Text>
                 <TouchableOpacity
-                  style={styles.closeButton}
+                  style={styles.uploadButton}
                   onPress={takeEtalase}
                 >
                   <Text style={styles.textStyle}>Send Display Photo</Text>
@@ -938,7 +924,12 @@ const HomePage: React.FC = () => {
             <View className="p-3" style={styles.modalBackground}>
               <View className="bg-white p-5 w-[100%] rounded-md">
                 <Text className="mb-5 text-xl font-bold">Izin</Text>
-
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIzingModalVisible(!izinModal)}
+                >
+                  <Text style={styles.closeButtonText}>X</Text>
+                </TouchableOpacity>
                 <View className="">
                   <View className="flex flex-col gap-4">
                     <View>
@@ -999,12 +990,6 @@ const HomePage: React.FC = () => {
                     </TouchableOpacity>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setIzingModalVisible(!izinModal)}
-                >
-                  <Text style={styles.textStyle}>Hide Modal</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -1124,15 +1109,24 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+
   closeButton: {
-    backgroundColor: "#F23737",
+    position: "absolute",
+    top: 10, // Distance from the top of the modal
+    right: 14, // Distance from the right of the modal
+    zIndex: 1, // Ensure the button stays on top
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  uploadButton: {
+    backgroundColor: "#159847",
     borderRadius: 10,
     padding: 10,
     elevation: 2,
     marginTop: 20,
-  },
-  uploadButton: {
-    padding: 10,
   },
   selectedImage: {
     width: 100,

@@ -30,6 +30,8 @@ const createSales = () => {
   const [userTable, setUserTable] = useState([["1", "Alex", "a", "Approve"]]);
 
   const [tambahModal, setTambahModalVisible] = useState(false);
+  const [editModal, setEditModalVisible] = useState(false);
+  const [editUserId, setEditUserId] = useState("");
   const izinTableHead = [
     "No",
     "Nama Sales",
@@ -113,19 +115,53 @@ const createSales = () => {
       { text: "Batal", style: "cancel" },
       {
         text: "Edit",
-        onPress: () => {
-          console.log(idAkun);
+        onPress: async () => {
+          try {
+            const response = await axios.get(`${apiUrl}/getEditSalesData`, {
+              params: { userId: idAkun }, // Pass idAkun as a query parameter
+            });
+
+            if (response.status === 200) {
+              // Set data from the response to the state
+              setUsername(response.data.username);
+              setPassword(response.data.password);
+              setEditUserId(idAkun);
+              setNamaSales(response.data.nama_karyawan);
+              setEditModalVisible(true);
+              setTambahModalVisible(false);
+            } else {
+              Alert.alert("Error", "Userid not found.");
+            }
+          } catch (error) {
+            Alert.alert("Error", "Failed to fetch sales data.");
+            console.error("Error:", error);
+          }
         },
       },
     ]);
   };
+
   const handleDelete = (idAkun) => {
     Alert.alert("Hapus Akun", "Apakah anda yakin ingin menghapus akun ini?", [
       { text: "Batal", style: "cancel" },
       {
         text: "Hapus",
-        onPress: () => {
-          console.log(idAkun);
+        onPress: async () => {
+          try {
+            const response = await axios.delete(`${apiUrl}/deleteSales`, {
+              params: { userId: idAkun }, // Pass idAkun as a query parameter
+            });
+
+            if (response.status === 200) {
+              Alert.alert("Success", "Sales deleted successfully.");
+              fetchData();
+            } else {
+              Alert.alert("Error", "Sales deletion failed.");
+            }
+          } catch (error) {
+            Alert.alert("Error", "Failed to fetch sales data.");
+            console.error("Error:", error);
+          }
         },
       },
     ]);
@@ -137,6 +173,42 @@ const createSales = () => {
   const closeSidenav = () => {
     setSidenavVisible(false);
   };
+  const handleEditUser = () => {
+    Alert.alert("Edit Akun", "Edit data ini?", [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Edit",
+        onPress: async () => {
+          const token = await AsyncStorage.getItem("authToken");
+          const userId = await AsyncStorage.getItem("userId");
+          if (!userId && !token) {
+            throw new Error("User ID & Token not found in AsyncStorage");
+          }
+          // Fetch Izin Data
+          const salesData = {
+            namaSales,
+            username,
+            password,
+            editUserId,
+          };
+          // Fetch Izin Data
+          const response = await axios.post(`${apiUrl}/editSales`, salesData);
+
+          if (response.status === 200) {
+            Alert.alert("Success", "Sales Edited successfully.");
+            setNamaSales("");
+            setUsername("");
+            setPassword("");
+            setEditUserId("");
+            fetchData();
+            setEditModalVisible(false);
+          } else {
+            Alert.alert("Error", "Sales Editing failed.");
+          }
+        },
+      },
+    ]);
+  };
   const handleAddUser = () => {
     Alert.alert("Tambah Akun", "Tambah data baru?", [
       { text: "Batal", style: "cancel" },
@@ -145,8 +217,8 @@ const createSales = () => {
         onPress: async () => {
           const token = await AsyncStorage.getItem("authToken");
           const userId = await AsyncStorage.getItem("userId");
-          if (!userId) {
-            throw new Error("User ID not found in AsyncStorage");
+          if (!userId && !token) {
+            throw new Error("User ID & Token not found in AsyncStorage");
           }
           // Fetch Izin Data
           const salesData = {
@@ -250,6 +322,62 @@ const createSales = () => {
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setTambahModalVisible(!tambahModal)}
+                >
+                  <Text style={styles.textStyle}>Hide Modal</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={editModal}
+            onRequestClose={() => setEditModalVisible(!editModal)}
+          >
+            <View style={styles.modalBackground}>
+              <View style={styles.modalView}>
+                <View>
+                  <Text className="font-extrabold">Nama Sales</Text>
+                  <TextInput
+                    editable
+                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                    maxLength={40}
+                    onChangeText={(namaSales) => setNamaSales(namaSales)}
+                    value={namaSales}
+                  />
+                </View>
+                <View className="mt-2">
+                  <Text className="font-extrabold">Username</Text>
+                  <TextInput
+                    editable
+                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                    maxLength={40}
+                    onChangeText={(username) => setUsername(username)}
+                    value={username}
+                  />
+                </View>
+                <View className="mt-2">
+                  <Text className="font-extrabold">Password</Text>
+                  <TextInput
+                    editable
+                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                    maxLength={40}
+                    onChangeText={(password) => setPassword(password)}
+                    secureTextEntry
+                    value={password}
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={handleEditUser}
+                  className="bg-[#159847] w-[75vw] mt-2 py-2 px-2"
+                >
+                  <Text className="text-sm font-bold text-center text-white">
+                    Submit
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setEditModalVisible(!editModal)}
                 >
                   <Text style={styles.textStyle}>Hide Modal</Text>
                 </TouchableOpacity>

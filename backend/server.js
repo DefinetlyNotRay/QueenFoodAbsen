@@ -11,12 +11,6 @@ const app = express();
 const port = 5000;
 let expo = new Expo();
 
-cloudinary.config({
-  cloud_name: "dezla8wit",
-  api_key: "725447651591522",
-  api_secret: "GbF49ob4jdpoZmw3ScT8ZKiSENQ",
-});
-
 app.use(bodyparser.json());
 app.use(
   cors({
@@ -465,7 +459,7 @@ app.get("/getTime", async (req, res) => {
   try {
     // Query to check if there is an attendance record for the user on the given date
     const [rows] = await pool.query(
-      "SELECT absen_time,pulang_time,id_absen FROM absen WHERE id_akun = ? AND tanggal_absen = ?",
+      "SELECT a.absen_time,a.pulang_time,a.id_absen,d.lokasi FROM absen a JOIN detail_absen d ON a.id_detail = d.id_detail WHERE a.id_akun = ? AND a.tanggal_absen = ?",
       [userId, date]
     );
 
@@ -473,9 +467,9 @@ app.get("/getTime", async (req, res) => {
       return res.status(404).json({ message: "Attendance record not found." });
     }
 
-    const { absen_time, pulang_time, id_absen } = rows[0];
-    console.log(absen_time, pulang_time, id_absen);
-    return res.status(200).json({ absen_time, pulang_time });
+    const { absen_time, pulang_time, id_absen, lokasi } = rows[0];
+    console.log(absen_time, pulang_time, id_absen, lokasi);
+    return res.status(200).json({ absen_time, pulang_time, lokasi });
   } catch (error) {
     console.error("Error checking attendance:", error);
     return res.status(500).json({ message: "Internal server error." });
@@ -587,18 +581,78 @@ app.post("/uploadIzin", async (req, res) => {
   }
 
   try {
-    // Query to check if there is an attendance record for the user on the given date
+    // Insert izin record
     await pool.query(
       "INSERT INTO izin (id_akun, tanggal_izin, alasan, tipe) VALUES (?, ?, ?, ?)",
-      [userId, date, alasanInput, value] // Use null instead of NULL
+      [userId, date, alasanInput, value]
     );
 
-    res.status(200).json({ message: "Izin uploaded successfully" });
+    // Fetch expo push token for admin users
+    const [rows] = await pool.query(
+      "SELECT e.expo_push_token, u.level FROM expo_push_tokens e JOIN user u ON e.id_akun = u.id_akun WHERE u.level = 'admin'"
+    );
 
-    // Insert data into absen, and let absen_time default to the current timestamp
+    if (rows.length === 0) {
+      return res.status(404).send("Admin push token not found");
+    }
+
+    const expoPushToken = rows[0].expo_push_token;
+
+    // Send notification to admin
+    await sendNotification(
+      expoPushToken,
+      `Permission Request`,
+      `A user has requested permission`
+    );
+
+    // Respond with success message after notification
+    res.status(200).json({ message: "Izin uploaded successfully" });
   } catch (error) {
-    console.error("Error checking attendance:", error);
+    console.error("Error uploading izin:", error);
     return res.status(500).json({ message: "Internal server error." });
+  }
+});
+
+app.delete("/deleteSales", async (req, res) => {
+  const { userId } = req.query;
+  try {
+    // Delete data from user table
+    await pool.query("DELETE FROM user WHERE id_akun = ?", [userId]);
+    res.status(200).json({ message: "Sales deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting sales:", error);
+    res.status(500).json({ error: "Failed to delete sales" });
+  }
+});
+
+app.post("/editSales", async (req, res) => {
+  const { namaSales, username, password, editUserId } = req.body;
+  try {
+    // Update data in user table
+    await pool.query(
+      "UPDATE user SET nama_karyawan = ?, username = ?, password = ? WHERE id_akun = ?",
+      [namaSales, username, password, editUserId]
+    );
+    res.status(200).json({ message: "Sales updated successfully" });
+  } catch (error) {
+    console.error("Error updating sales:", error);
+    res.status(500).json({ error: "Failed to update sales" });
+  }
+});
+
+app.get("/getEditSalesData", async (req, res) => {
+  const { userId } = req.query;
+  try {
+    const [rows] = await pool.query("SELECT * FROM user WHERE id_akun = ?", [
+      userId,
+    ]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "User not found." });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    res.status(500).json({ error: "Failed to fetch user data." });
   }
 });
 
