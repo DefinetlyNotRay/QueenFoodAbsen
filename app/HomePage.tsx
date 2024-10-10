@@ -10,7 +10,6 @@ import {
   TextInput,
 } from "react-native";
 import * as Notifications from "expo-notifications";
-import * as Permissions from "expo-permissions";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -64,7 +63,15 @@ const HomePage: React.FC = () => {
   const router = useRouter();
   const apiUrl = NGROK_API;
   const [expoPushToken, setExpoPushToken] = useState("");
-
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // Start with current month
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // Start with current year
+  const [attendanceCounts, setAttendanceCounts] = useState({
+    hadir: 0,
+    libur: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0,
+  });
   // Constants
   const statusColors = {
     Hadir: "#159847",
@@ -88,19 +95,28 @@ const HomePage: React.FC = () => {
     getTime();
   }, []);
   useEffect(() => {
-    const getPermissions = async () => {
-      const { status } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
-      if (status !== "granted") {
-        const { status: newStatus } = await Permissions.askAsync(
-          Permissions.NOTIFICATIONS
+    const getNotificationPermissions = async () => {
+      // Get the current notification permissions
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      // If the permission is not granted, request it
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      // If still not granted, show an alert
+      if (finalStatus !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "You need to grant permission to receive notifications"
         );
-        if (newStatus !== "granted") {
-          alert("You need to grant permission to receive notifications");
-        }
       }
     };
 
-    getPermissions();
+    getNotificationPermissions();
   }, []);
   useEffect(() => {
     const registerForPushNotificationsAsync = async () => {
@@ -788,6 +804,62 @@ const HomePage: React.FC = () => {
   };
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   const currentDay = new Date().getDay(); // 0 is Sunday, 1 is Monday, etc.
+  // Function to calculate attendance based on selected month
+  const calculateAttendanceCounts = (markedDates, month, year) => {
+    const attendanceCounts = {
+      hadir: 0,
+      libur: 0,
+      izin: 0,
+      sakit: 0,
+      alpha: 0,
+    };
+
+    // Iterate over markedDates to count the occurrences for the selected month and year
+    Object.keys(markedDates).forEach((date) => {
+      const dateObj = new Date(date);
+      const dateMonth = dateObj.getMonth() + 1;
+      const dateYear = dateObj.getFullYear();
+
+      if (dateMonth === month && dateYear === year) {
+        const status = markedDates[date].selectedColor;
+        if (status === "#159847") attendanceCounts.hadir++;
+        else if (status === "#F2D437") attendanceCounts.libur++;
+        else if (status === "#00CABE") attendanceCounts.izin++;
+        else if (status === "#B0AF9F") attendanceCounts.sakit++;
+        else if (status === "#6F6262") attendanceCounts.alpha++;
+      }
+    });
+
+    return attendanceCounts;
+  };
+
+  // Handle month change
+  const handleMonthChange = (monthData) => {
+    const newMonth = monthData.month;
+    const newYear = monthData.year;
+
+    setCurrentMonth(newMonth);
+    setCurrentYear(newYear);
+
+    // Update attendance counts when the month changes
+    const newAttendanceCounts = calculateAttendanceCounts(
+      markedDates,
+      newMonth,
+      newYear
+    );
+    setAttendanceCounts(newAttendanceCounts);
+  };
+
+  // Run when the app first loads to set the default month's attendance counts
+  useEffect(() => {
+    const initialAttendanceCounts = calculateAttendanceCounts(
+      markedDates,
+      currentMonth,
+      currentYear
+    );
+    setAttendanceCounts(initialAttendanceCounts);
+  }, [markedDates]); // This effect runs when markedDates is loaded
+  console.log(markedDates);
   return (
     <View style={{ flex: 1 }}>
       <Header onToggleSidenav={toggleSidenav} />
@@ -1001,6 +1073,7 @@ const HomePage: React.FC = () => {
         <Calendar
           onDayPress={(day) => console.log(day)}
           markedDates={markedDates}
+          onMonthChange={handleMonthChange} // This will trigger when the user changes months
           theme={{
             calendarBackground: "#ffffff",
             textSectionTitleColor: "#b6c1cd",
@@ -1033,7 +1106,10 @@ const HomePage: React.FC = () => {
             className="pt-1"
             style={[styles.legendDot, { backgroundColor: "#159847" }]}
           >
-            <Text className="text-sm text-center text-white">1</Text>
+            <Text className="text-sm text-center text-white">
+              {" "}
+              {attendanceCounts.hadir}
+            </Text>
           </View>
           <Text className="text-sm text-center">Hadir</Text>
         </View>
@@ -1042,7 +1118,10 @@ const HomePage: React.FC = () => {
             className="pt-1"
             style={[styles.legendDot, { backgroundColor: "#F2D437" }]}
           >
-            <Text className="text-sm text-center text-white">1</Text>
+            <Text className="text-sm text-center text-white">
+              {" "}
+              {attendanceCounts.libur}
+            </Text>
           </View>
           <Text className="text-sm text-center">Libur</Text>
         </View>
@@ -1051,7 +1130,10 @@ const HomePage: React.FC = () => {
             className="pt-1"
             style={[styles.legendDot, { backgroundColor: "#00CABE" }]}
           >
-            <Text className="text-sm text-center text-white">1</Text>
+            <Text className="text-sm text-center text-white">
+              {" "}
+              {attendanceCounts.izin}
+            </Text>
           </View>
           <Text className="text-sm text-center">Izin</Text>
         </View>
@@ -1060,7 +1142,10 @@ const HomePage: React.FC = () => {
             className="pt-1"
             style={[styles.legendDot, { backgroundColor: "#B0AF9F" }]}
           >
-            <Text className="text-sm text-center text-white">1</Text>
+            <Text className="text-sm text-center text-white">
+              {" "}
+              {attendanceCounts.sakit}
+            </Text>
           </View>
           <Text className="text-sm text-center">Sakit</Text>
         </View>
@@ -1069,7 +1154,9 @@ const HomePage: React.FC = () => {
             className="pt-1"
             style={[styles.legendDot, { backgroundColor: "#6F6262" }]}
           >
-            <Text className="text-sm text-center text-white">1</Text>
+            <Text className="text-sm text-center text-white">
+              {attendanceCounts.alpha}
+            </Text>
           </View>
           <Text className="text-sm text-center">Alpha</Text>
         </View>

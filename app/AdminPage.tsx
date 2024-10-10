@@ -12,6 +12,9 @@ import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Sidenav from "../components/Sidenav";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+
 import { BlurView } from "expo-blur";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
@@ -23,7 +26,8 @@ import SidenavAdmin from "../components/SidenavAdmin";
 import RNFS from "react-native-fs";
 import Share from "react-native-share";
 import * as FileSystem from "expo-file-system";
-
+import * as XLSX from "xlsx";
+import * as Sharing from "expo-sharing";
 const AdminPage: React.FC = () => {
   const router = useRouter();
   const apiUrl = NGROK_API;
@@ -47,6 +51,8 @@ const AdminPage: React.FC = () => {
   const [date, setDate] = useState(new Date());
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
+  const [expoPushToken, setExpoPushToken] = useState("");
+
   const [tableData, setTableData] = useState([
     ["1", "Alex", "01/09/24", "-", "Hadir"],
   ]);
@@ -68,7 +74,31 @@ const AdminPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string | null>(null);
   const [isFocus, setIsFocus] = useState(false);
+  // Function to export to Excel
+  const exportToExcel = async () => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([tableHead, ...filteredData]);
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
 
+      const wbout = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
+      const fileUri = FileSystem.documentDirectory + "tableData.xlsx";
+
+      await FileSystem.writeAsStringAsync(fileUri, wbout, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Check if sharing is available, then share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+      } else {
+        Alert.alert("Error", "Sharing is not available on this device");
+      }
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      Alert.alert("Error", "Failed to export data to Excel");
+    }
+  };
   const items = [
     { label: "None", value: "None" },
     { label: "Hadir", value: "Hadir" },
@@ -82,7 +112,106 @@ const AdminPage: React.FC = () => {
     const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
     return `${day}/${month}/${year}`;
   };
+  useEffect(() => {
+    const getNotificationPermissions = async () => {
+      // Get the current notification permissions
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
 
+      // If the permission is not granted, request it
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      // If still not granted, show an alert
+      if (finalStatus !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "You need to grant permission to receive notifications"
+        );
+      }
+    };
+
+    getNotificationPermissions();
+  }, []);
+  useEffect(() => {
+    const registerForPushNotificationsAsync = async () => {
+      if (Device.isDevice) {
+        const { status: existingStatus } =
+          await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== "granted") {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== "granted") {
+          alert("You need to grant permission to receive notifications");
+          return;
+        }
+
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
+        setExpoPushToken(token);
+        console.log("Expo Push Token:", token);
+
+        // Save the token to your backend
+        await saveTokenToBackend(token);
+      } else {
+        alert("Must use a physical device for push notifications");
+      }
+
+      if (Platform.OS === "android") {
+        Notifications.setNotificationChannelAsync("default", {
+          name: "default",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#FF231F7C",
+        });
+      }
+    };
+
+    registerForPushNotificationsAsync();
+  }, []);
+  const saveTokenToBackend = async (token) => {
+    const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
+    const response = await fetch(`${apiUrl}/expo-push-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Include the user's auth token if needed
+      },
+      body: JSON.stringify({ userId, expoPushToken: token }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to save push token:", response.status);
+      alert("Failed to save push token. Please try again.");
+    } else {
+      console.log("Push token saved successfully.");
+    }
+  };
+
+  console.log("Expo Push Token:", expoPushToken);
+  useEffect(() => {
+    const notificationListener = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log("Notification received:", notification);
+      }
+    );
+
+    const responseListener =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification response:", response);
+      });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, []);
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split("/").map(Number);
     return new Date(`20${year}`, month - 1, day);
@@ -451,6 +580,7 @@ const AdminPage: React.FC = () => {
             <TouchableOpacity
               style={styles.exportButton}
               className="w-[30%] rounded-md ml-64 mt-2 px-2 py-2"
+              onPress={exportToExcel} // Set onPress to exportToExcel function
             >
               <Text className="text-xs text-center text-white">
                 Export To Excel

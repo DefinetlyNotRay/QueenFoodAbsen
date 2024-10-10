@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   tableContainer: {
-    maxHeight: 700, // Adjust this to fit your screen
+    maxHeight: 800, // Adjust this to fit your screen
   },
   tableBorder: {
     borderWidth: 1,

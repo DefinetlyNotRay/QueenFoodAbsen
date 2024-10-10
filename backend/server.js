@@ -4,7 +4,6 @@ const mysql = require("mysql2/promise"); // Use promise-based version
 const bodyparser = require("body-parser");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const cloudinary = require("cloudinary").v2;
 const { Expo } = require("expo-server-sdk");
 
 const app = express();
