@@ -92,6 +92,11 @@ const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
               Izin List
             </Link>
           </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} className="mt-4">
+            <Link href="/absenAdmin" className="text-base">
+              Absen List
+            </Link>
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={handleLogout} className="mt-4">

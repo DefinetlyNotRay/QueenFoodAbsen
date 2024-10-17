@@ -42,6 +42,7 @@ const _layout = () => {
       <Stack.Screen name="izin" options={{ headerShown: false }} />
       <Stack.Screen name="izinAdmin" options={{ headerShown: false }} />
       <Stack.Screen name="createSales" options={{ headerShown: false }} />
+      <Stack.Screen name="absenAdmin" options={{ headerShown: false }} />
 
       <Stack.Screen name="AdminPage" options={{ headerShown: false }} />
     </Stack>

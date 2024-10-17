@@ -8,6 +8,7 @@ import {
   Image,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -33,6 +34,18 @@ const izinAdmin = () => {
   const [tableIzinData, setIzinTableData] = useState([
     ["1", "Alex", "a", "Approve"],
   ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const withLoading = async (func: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await func();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const [filteredData, setFilteredData] = useState<
     (string | number | JSX.Element)[][]
   >([]);
@@ -109,91 +122,94 @@ const izinAdmin = () => {
     fetchData(); // Initial data fetch
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found in AsyncStorage");
-      }
-      // Fetch Izin Data
-      const izinResponse = await fetch(`${apiUrl}/table-izin-admin`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  const fetchData = () =>
+    withLoading(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
+        }
+        // Fetch Izin Data
+        const izinResponse = await fetch(`${apiUrl}/table-izin-admin`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      if (!izinResponse.ok) {
-        Alert.alert("Error", "Failed to fetch izin");
-        return;
-      }
+        if (!izinResponse.ok) {
+          Alert.alert("Error", "Failed to fetch izin");
+          return;
+        }
 
-      const izinData = await izinResponse.json();
-      const formattedIzinData = izinData.map((row, index) => {
-        const date = new Date(row.tanggal_izin);
-        const formattedDate = formatDate(date);
-        return [
-          index + 1,
-          row.nama_karyawan,
-          formattedDate, // Use the corrected date here
-          row.alasan,
-          row.tipe,
-          row.status,
-          <View className="flex flex-col justify-center px-2 py-2 space-y-2">
-            {row.status === "Pending" ? (
-              <>
-                {/* Approve Button */}
+        const izinData = await izinResponse.json();
+        const formattedIzinData = izinData.map((row, index) => {
+          const date = new Date(row.tanggal_izin);
+          const formattedDate = formatDate(date);
+          return [
+            index + 1,
+            row.nama_karyawan,
+            formattedDate, // Use the corrected date here
+            row.alasan,
+            row.tipe,
+            row.status,
+            <View className="flex flex-col justify-center px-2 py-2 space-y-2">
+              {row.status === "Pending" ? (
+                <>
+                  {/* Approve Button */}
+                  <TouchableOpacity
+                    className="bg-[#228E47] p-1 rounded"
+                    onPress={() => handleApprove(row.id_izin)}
+                  >
+                    <Text className="text-white text-center text-[10px]">
+                      Approve
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Reject Button */}
+                  <TouchableOpacity
+                    className="bg-[#F23737] p-1 rounded"
+                    onPress={() => handleReject(row.id_izin)}
+                  >
+                    <Text className="text-white text-center text-[10px]">
+                      Reject
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                // Conditionally render the approved/rejected button with reduced opacity
                 <TouchableOpacity
-                  className="bg-[#228E47] p-1 rounded"
-                  onPress={() => handleApprove(row.id_izin)}
+                  className={`p-1 rounded ${
+                    row.status === "Approved" ? "bg-[#228E47]" : "bg-[#F23737]"
+                  }`}
+                  disabled={true} // Disable the button when it's not pending
+                  style={{ opacity: 0.6 }} // Lower opacity to indicate it's not clickable
                 >
-                  <Text className="text-white text-center text-[10px]">
-                    Approve
+                  <Text className="text-white text-center text-[10px] capitalize">
+                    {row.status} {/* Will show "approved" or "rejected" */}
                   </Text>
                 </TouchableOpacity>
+              )}
+            </View>,
+          ];
+        });
 
-                {/* Reject Button */}
-                <TouchableOpacity
-                  className="bg-[#F23737] p-1 rounded"
-                  onPress={() => handleReject(row.id_izin)}
-                >
-                  <Text className="text-white text-center text-[10px]">
-                    Reject
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              // Conditionally render the approved/rejected button with reduced opacity
-              <TouchableOpacity
-                className={`p-1 rounded ${
-                  row.status === "Approved" ? "bg-[#228E47]" : "bg-[#F23737]"
-                }`}
-                disabled={true} // Disable the button when it's not pending
-                style={{ opacity: 0.6 }} // Lower opacity to indicate it's not clickable
-              >
-                <Text className="text-white text-center text-[10px] capitalize">
-                  {row.status} {/* Will show "approved" or "rejected" */}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>,
-        ];
-      });
+        setIzinTableData(formattedIzinData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    });
+  const formatDate = (date: Date) =>
+    withLoading(async () => {
+      const day = date.getDate().toString().padStart(2, "0");
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
+      return `${day}/${month}/${year}`;
+    });
 
-      setIzinTableData(formattedIzinData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    }
-  };
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
-    return `${day}/${month}/${year}`;
-  };
-
-  const parseDate = (dateString) => {
-    const [year, month, day] = dateString.split("/");
-    return new Date(year, month - 1, day); // month is zero-based in JavaScript
-  };
+  const parseDate = (dateString) =>
+    withLoading(async () => {
+      const [year, month, day] = dateString.split("/");
+      return new Date(year, month - 1, day); // month is zero-based in JavaScript
+    });
 
   useEffect(() => {
     const filterData = () => {
@@ -269,61 +285,66 @@ const izinAdmin = () => {
     filterData();
   }, [selectedDate1, selectedDate2, value, tableIzinData]);
 
-  const handleApprove = async (id_izin) => {
-    const token = await AsyncStorage.getItem("authToken");
+  const handleApprove = (id_izin) =>
+    withLoading(async () => {
+      const token = await AsyncStorage.getItem("authToken");
 
-    if (!token) {
-      Alert.alert("Error", "Authorization token not found");
-      return;
-    }
-
-    console.log("Approving izin with ID:", id_izin); // Debug id_izin
-
-    try {
-      const response = await fetch(`${apiUrl}/accept-status/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id_izin }), // Ensure id_izin is correctly passed
-      });
-
-      const responseData = await response.json(); // Parse the response
-
-      if (!response.ok) {
-        console.log("Error response data:", responseData);
-        Alert.alert("Error", responseData.message || "Failed to approve izin");
+      if (!token) {
+        Alert.alert("Error", "Authorization token not found");
         return;
       }
 
-      console.log("Approval successful:", responseData);
-      fetchData(); // Refresh the table data
-    } catch (error) {
-      console.error("Failed to approve izin:", error);
-      Alert.alert("Error", "An error occurred while approving izin");
-    }
-  };
+      console.log("Approving izin with ID:", id_izin); // Debug id_izin
 
-  const handleReject = async (id_izin) => {
-    const token = await AsyncStorage.getItem("authToken");
+      try {
+        const response = await fetch(`${apiUrl}/accept-status/`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id_izin }), // Ensure id_izin is correctly passed
+        });
 
-    const response = await fetch(`${apiUrl}/reject-status/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json", // Specify content type
-      },
-      body: JSON.stringify({ id_izin }), // Send id_izin in the body
+        const responseData = await response.json(); // Parse the response
+
+        if (!response.ok) {
+          console.log("Error response data:", responseData);
+          Alert.alert(
+            "Error",
+            responseData.message || "Failed to approve izin"
+          );
+          return;
+        }
+
+        console.log("Approval successful:", responseData);
+        fetchData(); // Refresh the table data
+      } catch (error) {
+        console.error("Failed to approve izin:", error);
+        Alert.alert("Error", "An error occurred while approving izin");
+      }
     });
 
-    if (!response.ok) {
-      Alert.alert("Error", "Failed to reject izin");
-      return;
-    }
+  const handleReject = (id_izin) =>
+    withLoading(async () => {
+      const token = await AsyncStorage.getItem("authToken");
 
-    fetchData();
-  };
+      const response = await fetch(`${apiUrl}/reject-status/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json", // Specify content type
+        },
+        body: JSON.stringify({ id_izin }), // Send id_izin in the body
+      });
+
+      if (!response.ok) {
+        Alert.alert("Error", "Failed to reject izin");
+        return;
+      }
+
+      fetchData();
+    });
   const toggleSidenav = () => {
     setSidenavVisible(!isSidenavVisible);
   };
@@ -334,6 +355,12 @@ const izinAdmin = () => {
 
   return (
     <View style={{ flex: 1 }}>
+      {isLoading && (
+        <View style={styles.spinnerOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
+
       <Header onToggleSidenav={toggleSidenav} />
 
       {isSidenavVisible && (
@@ -450,6 +477,17 @@ const izinAdmin = () => {
 };
 
 const styles = StyleSheet.create({
+  spinnerOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
+  },
   blurContainer: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -460,7 +498,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   tableContainer: {
-    maxHeight: 800, // Adjust this to fit your screen
+    maxHeight: 600, // Adjust this to fit your screen
   },
   tableBorder: {
     borderWidth: 1,

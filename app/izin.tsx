@@ -8,6 +8,7 @@ import {
   Image,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -25,7 +26,18 @@ const izin = () => {
     ["1", "Alex", "a", "Approve"],
   ]);
   const izinTableHead = ["No", "Tanggal", "Alasan", "Tipe", "Status"];
-
+  const [isLoading, setIsLoading] = useState(false);
+  const withLoading = async (func: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await func();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // Define the column widths for each column
   const widthArr = [40, 100, 150, 80, 100];
 
@@ -49,40 +61,41 @@ const izin = () => {
     fetchData(); // Initial data fetch
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found in AsyncStorage");
-      }
-      // Fetch Izin Data
-      const izinResponse = await fetch(
-        `${apiUrl}/table-izin-karyawan/${userId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
+  const fetchData = () =>
+    withLoading(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
         }
-      );
+        // Fetch Izin Data
+        const izinResponse = await fetch(
+          `${apiUrl}/table-izin-karyawan/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-      if (!izinResponse.ok) {
-        Alert.alert("Error", "Failed to fetch izin");
-        return;
+        if (!izinResponse.ok) {
+          Alert.alert("Error", "Failed to fetch izin");
+          return;
+        }
+
+        const izinData = await izinResponse.json();
+        const formattedIzinData = izinData.map((row, index) => [
+          index + 1,
+          row.tanggal_izin.split("T")[0],
+          row.alasan,
+          row.tipe,
+          row.status,
+        ]);
+
+        setIzinTableData(formattedIzinData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
       }
-
-      const izinData = await izinResponse.json();
-      const formattedIzinData = izinData.map((row, index) => [
-        index + 1,
-        row.tanggal_izin.split("T")[0],
-        row.alasan,
-        row.tipe,
-        row.status,
-      ]);
-
-      setIzinTableData(formattedIzinData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    }
-  };
+    });
 
   const toggleSidenav = () => {
     setSidenavVisible(!isSidenavVisible);
@@ -94,6 +107,12 @@ const izin = () => {
 
   return (
     <View style={{ flex: 1 }}>
+      {isLoading && (
+        <View style={styles.spinnerOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
+
       <Header onToggleSidenav={toggleSidenav} />
 
       {isSidenavVisible && (
@@ -150,6 +169,17 @@ const izin = () => {
 };
 
 const styles = StyleSheet.create({
+  spinnerOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
+  },
   blurContainer: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",

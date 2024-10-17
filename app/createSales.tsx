@@ -9,6 +9,7 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -32,6 +33,18 @@ const createSales = () => {
   const [tambahModal, setTambahModalVisible] = useState(false);
   const [editModal, setEditModalVisible] = useState(false);
   const [editUserId, setEditUserId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const withLoading = async (func: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await func();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const izinTableHead = [
     "No",
     "Nama Sales",
@@ -63,109 +76,112 @@ const createSales = () => {
     fetchData(); // Initial data fetch
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found in AsyncStorage");
-      }
-      // Fetch Izin Data
-      const izinResponse = await fetch(`${apiUrl}/table-sales`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+  const fetchData = () =>
+    withLoading(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
+        }
+        // Fetch Izin Data
+        const izinResponse = await fetch(`${apiUrl}/table-sales`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      if (!izinResponse.ok) {
-        const errorResponse = await izinResponse.json();
-        console.error("Error response:", errorResponse);
-        Alert.alert("Error", "Failed to fetch data");
-        return;
-      }
+        if (!izinResponse.ok) {
+          const errorResponse = await izinResponse.json();
+          console.error("Error response:", errorResponse);
+          Alert.alert("Error", "Failed to fetch data");
+          return;
+        }
 
-      const izinData = await izinResponse.json();
-      const formattedIzinData = izinData.map((row, index) => [
-        index + 1,
-        row.nama_karyawan,
-        row.username,
-        row.password,
-        row.level,
-        <View className="flex flex-col justify-center px-2 py-2 space-y-2">
-          <TouchableOpacity
-            className="bg-[#228E47] p-1 rounded"
-            onPress={() => handleEdit(row.id_akun)}
-          >
-            <Text className="text-white text-center text-[10px]">Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="bg-[#F23737] p-1 rounded"
-            onPress={() => handleDelete(row.id_akun)}
-          >
-            <Text className="text-white text-center text-[10px]">Delete</Text>
-          </TouchableOpacity>
-        </View>,
+        const izinData = await izinResponse.json();
+        const formattedIzinData = izinData.map((row, index) => [
+          index + 1,
+          row.nama_karyawan,
+          row.username,
+          row.password,
+          row.level,
+          <View className="flex flex-col justify-center px-2 py-2 space-y-2">
+            <TouchableOpacity
+              className="bg-[#228E47] p-1 rounded"
+              onPress={() => handleEdit(row.id_akun)}
+            >
+              <Text className="text-white text-center text-[10px]">Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="bg-[#F23737] p-1 rounded"
+              onPress={() => handleDelete(row.id_akun)}
+            >
+              <Text className="text-white text-center text-[10px]">Delete</Text>
+            </TouchableOpacity>
+          </View>,
+        ]);
+
+        setUserTable(formattedIzinData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    });
+  const handleEdit = (idAkun) =>
+    withLoading(async () => {
+      Alert.alert("Edit Akun", "Edit data ini?", [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Edit",
+          onPress: async () => {
+            try {
+              const response = await axios.get(`${apiUrl}/getEditSalesData`, {
+                params: { userId: idAkun }, // Pass idAkun as a query parameter
+              });
+
+              if (response.status === 200) {
+                // Set data from the response to the state
+                setUsername(response.data.username);
+                setPassword(response.data.password);
+                setEditUserId(idAkun);
+                setNamaSales(response.data.nama_karyawan);
+                setEditModalVisible(true);
+                setTambahModalVisible(false);
+              } else {
+                Alert.alert("Error", "Userid not found.");
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to fetch sales data.");
+              console.error("Error:", error);
+            }
+          },
+        },
       ]);
+    });
 
-      setUserTable(formattedIzinData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    }
-  };
-  const handleEdit = (idAkun) => {
-    Alert.alert("Edit Akun", "Edit data ini?", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Edit",
-        onPress: async () => {
-          try {
-            const response = await axios.get(`${apiUrl}/getEditSalesData`, {
-              params: { userId: idAkun }, // Pass idAkun as a query parameter
-            });
+  const handleDelete = (idAkun) =>
+    withLoading(async () => {
+      Alert.alert("Hapus Akun", "Apakah anda yakin ingin menghapus akun ini?", [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          onPress: async () => {
+            try {
+              const response = await axios.delete(`${apiUrl}/deleteSales`, {
+                params: { userId: idAkun }, // Pass idAkun as a query parameter
+              });
 
-            if (response.status === 200) {
-              // Set data from the response to the state
-              setUsername(response.data.username);
-              setPassword(response.data.password);
-              setEditUserId(idAkun);
-              setNamaSales(response.data.nama_karyawan);
-              setEditModalVisible(true);
-              setTambahModalVisible(false);
-            } else {
-              Alert.alert("Error", "Userid not found.");
+              if (response.status === 200) {
+                Alert.alert("Success", "Sales deleted successfully.");
+                fetchData();
+              } else {
+                Alert.alert("Error", "Sales deletion failed.");
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to fetch sales data.");
+              console.error("Error:", error);
             }
-          } catch (error) {
-            Alert.alert("Error", "Failed to fetch sales data.");
-            console.error("Error:", error);
-          }
+          },
         },
-      },
-    ]);
-  };
-
-  const handleDelete = (idAkun) => {
-    Alert.alert("Hapus Akun", "Apakah anda yakin ingin menghapus akun ini?", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Hapus",
-        onPress: async () => {
-          try {
-            const response = await axios.delete(`${apiUrl}/deleteSales`, {
-              params: { userId: idAkun }, // Pass idAkun as a query parameter
-            });
-
-            if (response.status === 200) {
-              Alert.alert("Success", "Sales deleted successfully.");
-              fetchData();
-            } else {
-              Alert.alert("Error", "Sales deletion failed.");
-            }
-          } catch (error) {
-            Alert.alert("Error", "Failed to fetch sales data.");
-            console.error("Error:", error);
-          }
-        },
-      },
-    ]);
-  };
+      ]);
+    });
   const toggleSidenav = () => {
     setSidenavVisible(!isSidenavVisible);
   };
@@ -173,78 +189,89 @@ const createSales = () => {
   const closeSidenav = () => {
     setSidenavVisible(false);
   };
-  const handleEditUser = () => {
-    Alert.alert("Edit Akun", "Edit data ini?", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Edit",
-        onPress: async () => {
-          const token = await AsyncStorage.getItem("authToken");
-          const userId = await AsyncStorage.getItem("userId");
-          if (!userId && !token) {
-            throw new Error("User ID & Token not found in AsyncStorage");
-          }
-          // Fetch Izin Data
-          const salesData = {
-            namaSales,
-            username,
-            password,
-            editUserId,
-          };
-          // Fetch Izin Data
-          const response = await axios.post(`${apiUrl}/editSales`, salesData);
+  const handleEditUser = () =>
+    withLoading(async () => {
+      Alert.alert("Edit Akun", "Edit data ini?", [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Edit",
+          onPress: async () => {
+            const token = await AsyncStorage.getItem("authToken");
+            const userId = await AsyncStorage.getItem("userId");
+            if (!userId && !token) {
+              throw new Error("User ID & Token not found in AsyncStorage");
+            }
+            // Fetch Izin Data
+            const salesData = {
+              namaSales,
+              username,
+              password,
+              editUserId,
+            };
+            // Fetch Izin Data
+            const response = await axios.post(`${apiUrl}/editSales`, salesData);
 
-          if (response.status === 200) {
-            Alert.alert("Success", "Sales Edited successfully.");
-            setNamaSales("");
-            setUsername("");
-            setPassword("");
-            setEditUserId("");
-            fetchData();
-            setEditModalVisible(false);
-          } else {
-            Alert.alert("Error", "Sales Editing failed.");
-          }
+            if (response.status === 200) {
+              Alert.alert("Success", "Sales Edited successfully.");
+              setNamaSales("");
+              setUsername("");
+              setPassword("");
+              setEditUserId("");
+              fetchData();
+              setEditModalVisible(false);
+            } else {
+              Alert.alert("Error", "Sales Editing failed.");
+            }
+          },
         },
-      },
-    ]);
-  };
-  const handleAddUser = () => {
-    Alert.alert("Tambah Akun", "Tambah data baru?", [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Tambah",
-        onPress: async () => {
-          const token = await AsyncStorage.getItem("authToken");
-          const userId = await AsyncStorage.getItem("userId");
-          if (!userId && !token) {
-            throw new Error("User ID & Token not found in AsyncStorage");
-          }
-          // Fetch Izin Data
-          const salesData = {
-            namaSales,
-            username,
-            password,
-          };
-          // Fetch Izin Data
-          const response = await axios.post(`${apiUrl}/createSales`, salesData);
+      ]);
+    });
+  const handleAddUser = () =>
+    withLoading(async () => {
+      Alert.alert("Tambah Akun", "Tambah data baru?", [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Tambah",
+          onPress: async () => {
+            const token = await AsyncStorage.getItem("authToken");
+            const userId = await AsyncStorage.getItem("userId");
+            if (!userId && !token) {
+              throw new Error("User ID & Token not found in AsyncStorage");
+            }
+            // Fetch Izin Data
+            const salesData = {
+              namaSales,
+              username,
+              password,
+            };
+            // Fetch Izin Data
+            const response = await axios.post(
+              `${apiUrl}/createSales`,
+              salesData
+            );
 
-          if (response.status === 200) {
-            Alert.alert("Success", "Sales created successfully.");
-            setNamaSales("");
-            setUsername("");
-            setPassword("");
-            fetchData();
-            setTambahModalVisible(false);
-          } else {
-            Alert.alert("Error", "Sales creatiion failed.");
-          }
+            if (response.status === 200) {
+              Alert.alert("Success", "Sales created successfully.");
+              setNamaSales("");
+              setUsername("");
+              setPassword("");
+              fetchData();
+              setTambahModalVisible(false);
+            } else {
+              Alert.alert("Error", "Sales creatiion failed.");
+            }
+          },
         },
-      },
-    ]);
-  };
+      ]);
+    });
   return (
     <View style={{ flex: 1 }}>
+      {isLoading && (
+        <View style={styles.spinnerOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
+
       <Header onToggleSidenav={toggleSidenav} />
 
       {isSidenavVisible && (
@@ -323,7 +350,7 @@ const createSales = () => {
                   style={styles.closeButton}
                   onPress={() => setTambahModalVisible(!tambahModal)}
                 >
-                  <Text style={styles.textStyle}>Hide Modal</Text>
+                  <Text style={styles.closeButtonText}>X</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -379,7 +406,7 @@ const createSales = () => {
                   style={styles.closeButton}
                   onPress={() => setEditModalVisible(!editModal)}
                 >
-                  <Text style={styles.textStyle}>Hide Modal</Text>
+                  <Text style={styles.closeButtonText}>X</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -425,6 +452,17 @@ const createSales = () => {
 };
 
 const styles = StyleSheet.create({
+  spinnerOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
+  },
   blurContainer: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -456,11 +494,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   closeButton: {
-    backgroundColor: "#F23737",
-    borderRadius: 10,
-    padding: 10,
-    elevation: 2,
-    marginTop: 20,
+    position: "absolute",
+    top: 10, // Distance from the top of the modal
+    right: 17, // Distance from the right of the modal
+    zIndex: 1, // Ensure the button stays on top
   },
   tableContainer: {
     maxHeight: 700, // Adjust this to fit your screen
@@ -511,6 +548,11 @@ const styles = StyleSheet.create({
   fullImage: {
     width: "90%",
     height: "70%",
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#000",
   },
 });
 

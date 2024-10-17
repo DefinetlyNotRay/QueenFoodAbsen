@@ -22,7 +22,7 @@ const secretKey = "asdhasjdhe2y9813h1ui3"; // Replace with a strong, random key
 
 // Create a connection pool
 const pool = mysql.createPool({
-  host: "localhost",
+  host: "127.0.0.1",
   user: "root", // Replace with your MySQL username
   password: "", // Replace with your MySQL password
   database: "queenfood", // Replace with your MySQL database name
@@ -300,7 +300,7 @@ app.get("/attendance/:userId", async (req, res) => {
 app.get("/table-absen", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT a.id_absen,u.nama_karyawan,a.absen_time,a.pulang_time,a.detail FROM absen a JOIN user u ON a.id_akun = u.id_akun ORDER BY tanggal_absen DESC"
+      "SELECT a.id_absen,u.nama_karyawan,a.absen_time,a.pulang_time,a.detail,d.* FROM absen a JOIN user u ON a.id_akun = u.id_akun JOIN detail_absen d ON a.id_detail = d.id_detail ORDER BY tanggal_absen DESC"
     );
     res.json(rows);
   } catch (error) {

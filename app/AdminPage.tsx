@@ -7,6 +7,7 @@ import {
   Alert,
   PermissionsAndroid,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -106,6 +107,18 @@ const AdminPage: React.FC = () => {
     { label: "Izin", value: "Izin" },
     { label: "Alpa", value: "Alpa" },
   ];
+  const [isLoading, setIsLoading] = useState(false);
+  const withLoading = async (func: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await func();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -219,136 +232,141 @@ const AdminPage: React.FC = () => {
   useEffect(() => {
     fetchData(); // Initial data fetch
   }, []);
-  const fetchData = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
+  const fetchData = () =>
+    withLoading(async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
 
-      // Fetch Izin Data
-      const izinResponse = await fetch(`${apiUrl}/table-izin`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!izinResponse.ok) {
-        Alert.alert("Error", "Failed to fetch izin");
-        return;
-      }
-
-      const izinData = await izinResponse.json();
-      const formattedIzinData = izinData.map((row, index) => [
-        index + 1,
-        row.nama_karyawan,
-        row.alasan,
-        <View className="flex flex-col justify-center px-2 py-2 space-y-2">
-          <TouchableOpacity
-            className="bg-[#228E47] p-1 rounded"
-            onPress={() => handleApprove(row.id_izin, row.id_akun, row.tipe)}
-          >
-            <Text className="text-white text-center text-[10px]">Approve</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="bg-[#F23737] p-1 rounded"
-            onPress={() => handleReject(row.id_izin, row.id_akun, row.tipe)}
-          >
-            <Text className="text-white text-center text-[10px]">Reject</Text>
-          </TouchableOpacity>
-        </View>,
-      ]);
-
-      setIzinTableData(formattedIzinData);
-
-      // Fetch Attendance Data
-      const absenResponse = await fetch(`${apiUrl}/table-absen`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!absenResponse.ok) {
-        Alert.alert("Error", "Failed to fetch attendance");
-        return;
-      }
-
-      const absenData = await absenResponse.json();
-      const formattedAbsenData = absenData.map((row, index) => {
-        const absenTime = new Date(row.absen_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
+        // Fetch Izin Data
+        const izinResponse = await fetch(`${apiUrl}/table-izin`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        const absenDate = new Date(row.absen_time);
-        const formattedDate = formatDate(absenDate);
-        const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        return [
+
+        if (!izinResponse.ok) {
+          Alert.alert("Error", "Failed to fetch izin");
+          return;
+        }
+
+        const izinData = await izinResponse.json();
+        const formattedIzinData = izinData.map((row, index) => [
           index + 1,
           row.nama_karyawan,
-          formattedDate,
-          absenTime,
-          pulangTime,
-          row.detail,
-        ];
-      });
+          row.alasan,
+          <View className="flex flex-col justify-center px-2 py-2 space-y-2">
+            <TouchableOpacity
+              className="bg-[#228E47] p-1 rounded"
+              onPress={() => handleApprove(row.id_izin, row.id_akun, row.tipe)}
+            >
+              <Text className="text-white text-center text-[10px]">
+                Approve
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="bg-[#F23737] p-1 rounded"
+              onPress={() => handleReject(row.id_izin, row.id_akun, row.tipe)}
+            >
+              <Text className="text-white text-center text-[10px]">Reject</Text>
+            </TouchableOpacity>
+          </View>,
+        ]);
 
-      setTableData(formattedAbsenData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    }
-  };
+        setIzinTableData(formattedIzinData);
 
-  const handleApprove = async (id_izin, id_akun, value) => {
-    const token = await AsyncStorage.getItem("authToken");
-    const today = new Date().toISOString().split("T")[0];
-    Alert.alert("Approve Izin", "Approve this request?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Approve",
-        onPress: async () => {
-          const response = await fetch(`${apiUrl}/accept-status/`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json", // Specify content type
-            },
-            body: JSON.stringify({ id_izin, id_akun, value, today }), // Send id_izin in the body
+        // Fetch Attendance Data
+        const absenResponse = await fetch(`${apiUrl}/table-absen`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!absenResponse.ok) {
+          Alert.alert("Error", "Failed to fetch attendance");
+          return;
+        }
+
+        const absenData = await absenResponse.json();
+        const formattedAbsenData = absenData.map((row, index) => {
+          const absenTime = new Date(row.absen_time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
           });
-
-          if (!response.ok) {
-            Alert.alert("Error", "Failed to approve izin");
-            return;
-          }
-
-          fetchData();
-        },
-      },
-    ]);
-  };
-
-  const handleReject = async (id_izin, id_akun, value) => {
-    const token = await AsyncStorage.getItem("authToken");
-    const today = new Date().toISOString().split("T")[0];
-    Alert.alert("Reject Request", "Reject this request?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Reject",
-        onPress: async () => {
-          const response = await fetch(`${apiUrl}/reject-status/`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json", // Specify content type
-            },
-            body: JSON.stringify({ id_izin, id_akun, today, value }), // Send id_izin in the body
+          const absenDate = new Date(row.absen_time);
+          const formattedDate = formatDate(absenDate);
+          const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
           });
+          return [
+            index + 1,
+            row.nama_karyawan,
+            formattedDate,
+            absenTime,
+            pulangTime,
+            row.detail,
+          ];
+        });
 
-          if (!response.ok) {
-            Alert.alert("Error", "Failed to reject izin");
-            return;
-          }
+        setTableData(formattedAbsenData);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    });
 
-          fetchData();
+  const handleApprove = (id_izin, id_akun, value) =>
+    withLoading(async () => {
+      const token = await AsyncStorage.getItem("authToken");
+      const today = new Date().toISOString().split("T")[0];
+      Alert.alert("Approve Izin", "Approve this request?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Approve",
+          onPress: async () => {
+            const response = await fetch(`${apiUrl}/accept-status/`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json", // Specify content type
+              },
+              body: JSON.stringify({ id_izin, id_akun, value, today }), // Send id_izin in the body
+            });
+
+            if (!response.ok) {
+              Alert.alert("Error", "Failed to approve izin");
+              return;
+            }
+
+            fetchData();
+          },
         },
-      },
-    ]);
-  };
+      ]);
+    });
+
+  const handleReject = (id_izin, id_akun, value) =>
+    withLoading(async () => {
+      const token = await AsyncStorage.getItem("authToken");
+      const today = new Date().toISOString().split("T")[0];
+      Alert.alert("Reject Request", "Reject this request?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reject",
+          onPress: async () => {
+            const response = await fetch(`${apiUrl}/reject-status/`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json", // Specify content type
+              },
+              body: JSON.stringify({ id_izin, id_akun, today, value }), // Send id_izin in the body
+            });
+
+            if (!response.ok) {
+              Alert.alert("Error", "Failed to reject izin");
+              return;
+            }
+
+            fetchData();
+          },
+        },
+      ]);
+    });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -400,31 +418,32 @@ const AdminPage: React.FC = () => {
     setSidenavVisible(false);
   };
 
-  const showDatePicker = (isFirstDatePicker: boolean) => {
-    DateTimePickerAndroid.open({
-      value: date,
-      onChange: (event, selectedDate) => {
-        if (event.type === "set" && selectedDate) {
-          // Only set date if 'OK' was pressed
-          const formattedDate = formatDate(selectedDate);
-          if (isFirstDatePicker) {
-            setSelectedDate1(formattedDate);
-          } else {
-            setSelectedDate2(formattedDate);
+  const showDatePicker = (isFirstDatePicker: boolean) =>
+    withLoading(async () => {
+      DateTimePickerAndroid.open({
+        value: date,
+        onChange: (event, selectedDate) => {
+          if (event.type === "set" && selectedDate) {
+            // Only set date if 'OK' was pressed
+            const formattedDate = formatDate(selectedDate);
+            if (isFirstDatePicker) {
+              setSelectedDate1(formattedDate);
+            } else {
+              setSelectedDate2(formattedDate);
+            }
+          } else if (event.type === "dismissed") {
+            // Handle cancel
+            if (isFirstDatePicker) {
+              setSelectedDate1(null);
+            } else {
+              setSelectedDate2(null);
+            }
           }
-        } else if (event.type === "dismissed") {
-          // Handle cancel
-          if (isFirstDatePicker) {
-            setSelectedDate1(null);
-          } else {
-            setSelectedDate2(null);
-          }
-        }
-      },
-      mode: "date",
-      is24Hour: true,
+        },
+        mode: "date",
+        is24Hour: true,
+      });
     });
-  };
 
   useEffect(() => {
     const filterData = () => {
@@ -467,6 +486,12 @@ const AdminPage: React.FC = () => {
 
   return (
     <View style={{ flex: 1 }}>
+      {isLoading && (
+        <View style={styles.spinnerOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
+
       <Header onToggleSidenav={toggleSidenav} />
 
       {isSidenavVisible && (
@@ -562,14 +587,10 @@ const AdminPage: React.FC = () => {
               />
             </View>
           </View>
-          <View style={styles.tableContainer}>
+          <View>
             <ScrollView style={{ maxHeight: 160 }}>
               <Table borderStyle={styles.border}>
-                <Row
-                  data={tableHead}
-                  style={styles.tableHead}
-                  textStyle={styles.text}
-                />
+                <Row data={tableHead} textStyle={styles.text} />
                 {filteredData.length > 0 ? (
                   <Rows data={filteredData} textStyle={styles.text} />
                 ) : (
@@ -640,6 +661,17 @@ const styles = StyleSheet.create({
     margin: 6,
     textAlign: "center",
     fontSize: 11,
+  },
+  spinnerOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
   },
 });
 

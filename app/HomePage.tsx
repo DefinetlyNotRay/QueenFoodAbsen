@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -55,6 +56,7 @@ const HomePage: React.FC = () => {
   const [hasGoneHome, setHasGoneHome] = useState(false);
   const [isGoneHomeDisabled, setIsGoneHomeDisabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
   const [markedDates, setMarkedDates] = useState({});
   const [isSidenavVisible, setSidenavVisible] = useState(false);
   const [absenTime, setAbsenTime] = useState("");
@@ -67,7 +69,6 @@ const HomePage: React.FC = () => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // Start with current year
   const [attendanceCounts, setAttendanceCounts] = useState({
     hadir: 0,
-    libur: 0,
     izin: 0,
     sakit: 0,
     alpha: 0,
@@ -75,9 +76,8 @@ const HomePage: React.FC = () => {
   // Constants
   const statusColors = {
     Hadir: "#159847",
-    Libur: "#F2D437",
     Izin: "#00CABE",
-    Sakit: "#B0AF9F",
+    Sakit: "#F2D437",
     Alpha: "#6F6262",
   };
 
@@ -85,7 +85,17 @@ const HomePage: React.FC = () => {
     { label: "Sakit", value: "Sakit" },
     { label: "Izin", value: "Izin" },
   ];
-
+  const withLoading = async (func: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await func();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // useEffect hooks
   useEffect(() => {
     checkAttendance();
@@ -277,7 +287,7 @@ const HomePage: React.FC = () => {
 
         // Get today's date and start date (September 1st)
         const today = new Date();
-        const startDate = new Date("2024-09-01");
+        const startDate = new Date("2024-10-17");
 
         // Initialize dates object with Alpha status for every day from startDate until today
         const dates = {};
@@ -331,128 +341,136 @@ const HomePage: React.FC = () => {
   /**
    * Checks if the user has already attended today
    */
-  const checkAttendance = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found");
-      }
+  const checkAttendance = () =>
+    withLoading(async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found");
+        }
 
-      const today = new Date().toISOString().split("T")[0];
-      const response = await axios.get(
-        `${apiUrl}/checkAttendance?userId=${userId}&date=${today}`
-      );
+        const today = new Date().toISOString().split("T")[0];
+        const response = await axios.get(
+          `${apiUrl}/checkAttendance?userId=${userId}&date=${today}`
+        );
 
-      if (response.data.hasAttended) {
-        setHasAttendedToday(true);
-        setIsGoneHomeDisabled(false);
-      } else {
-        setHasAttendedToday(false);
-        setIsGoneHomeDisabled(true);
+        if (response.data.hasAttended) {
+          setHasAttendedToday(true);
+          setIsGoneHomeDisabled(false);
+        } else {
+          setHasAttendedToday(false);
+          setIsGoneHomeDisabled(true);
+        }
+      } catch (error) {
+        console.error("Error checking attendance:", error);
+        Alert.alert("Error", "Failed to check attendance.");
       }
-    } catch (error) {
-      console.error("Error checking attendance:", error);
-      Alert.alert("Error", "Failed to check attendance.");
-    }
-  };
+    });
 
   /**
    * Checks if the user has already gone home today
    */
-  const checkHome = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found");
-      }
+  const checkHome = () =>
+    withLoading(async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found");
+        }
 
-      const today = new Date().toISOString().split("T")[0];
-      const response = await axios.get(
-        `${apiUrl}/checkHome?userId=${userId}&date=${today}`
-      );
+        const today = new Date().toISOString().split("T")[0];
+        const response = await axios.get(
+          `${apiUrl}/checkHome?userId=${userId}&date=${today}`
+        );
 
-      if (response.data.hasAttended) {
-        setHasGoneHome(true);
-      } else {
-        setHasGoneHome(false);
+        if (response.data.hasAttended) {
+          setHasGoneHome(true);
+        } else {
+          setHasGoneHome(false);
+        }
+      } catch (error) {
+        console.error("Error checking home status:", error);
+        Alert.alert("Error", "Failed to check home status.");
       }
-    } catch (error) {
-      console.error("Error checking home status:", error);
-      Alert.alert("Error", "Failed to check home status.");
-    }
-  };
+    });
 
   /**
    * Checks if the user has already submitted an absence request today
    */
-  const checkIzin = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found");
+  const checkIzin = () =>
+    withLoading(async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found");
+        }
+
+        const today = new Date().toISOString().split("T")[0];
+        const response = await axios.get(
+          `${apiUrl}/checkIzin?userId=${userId}&date=${today}`
+        );
+
+        if (response.data.hasAttended) {
+          setHasIzinToday(true);
+        } else {
+          setHasIzinToday(false);
+        }
+      } catch (error) {
+        console.error("Error checking izin status:", error);
+        Alert.alert("Error", "Failed to check izin status.");
       }
+    });
 
-      const today = new Date().toISOString().split("T")[0];
-      const response = await axios.get(
-        `${apiUrl}/checkIzin?userId=${userId}&date=${today}`
-      );
+  const checkIzinApproveOrReject = () =>
+    withLoading(async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found");
+        }
 
-      if (response.data.hasAttended) {
-        setHasIzinToday(true);
-      } else {
-        setHasIzinToday(false);
+        const today = new Date().toISOString().split("T")[0];
+        const response = await axios.get(
+          `${apiUrl}/checkIzinApproveOrReject?userId=${userId}&date=${today}`
+        );
+
+        if (response.data.hasIzinStatus) {
+          setHasIzinToday(true);
+          console.log("Has Izin Today", hasIzinToday);
+        } else {
+          setHasIzinToday(false);
+          console.log("Has Izin Today", hasIzinToday);
+        }
+      } catch (error) {
+        console.error("Error checking izin Accept/Reject status:", error);
+        Alert.alert("Error", "Failed to check izin Accept/Reject status.");
       }
-    } catch (error) {
-      console.error("Error checking izin status:", error);
-      Alert.alert("Error", "Failed to check izin status.");
-    }
-  };
-
-  const checkIzinApproveOrReject = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found");
-      }
-
-      const today = new Date().toISOString().split("T")[0];
-      const response = await axios.get(
-        `${apiUrl}/checkIzinApproveOrReject?userId=${userId}&date=${today}`
-      );
-
-      if (response.data.hasIzinStatus) {
-        setHasIzinToday(true);
-        console.log("Has Izin Today", hasIzinToday);
-      } else {
-        setHasIzinToday(false);
-        console.log("Has Izin Today", hasIzinToday);
-      }
-    } catch (error) {
-      console.error("Error checking izin Accept/Reject status:", error);
-      Alert.alert("Error", "Failed to check izin Accept/Reject status.");
-    }
-  };
+    });
 
   /**
    * Retrieves the current location of the user
    */
-  const getLocationData = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Location Error", "Permission to access location was denied");
-      return;
-    }
-    let currentLocation = await Location.getCurrentPositionAsync({});
-    setLocation(currentLocation);
-    setTimeout(() => {
-      setLoactionModal(false);
-      setEtelaseModal(true);
-    }, 1000);
-    Alert.alert(
-      "Location Retrieved",
-      `Latitude: ${currentLocation.coords.latitude}, Longitude: ${currentLocation.coords.longitude}`
-    );
-  };
+  const getLocationData = () =>
+    withLoading(async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Location Error",
+          "Permission to access location was denied"
+        );
+        return;
+      }
+      let currentLocation = await Location.getCurrentPositionAsync({});
+      setLocation(currentLocation);
+      setTimeout(() => {
+        setLoactionModal(false);
+        setEtelaseModal(true);
+        Alert.alert(
+          "Location Retrieved",
+          `Latitude: ${currentLocation.coords.latitude}, Longitude: ${currentLocation.coords.longitude}`
+        );
+      }, 1000);
+    });
 
   /**
    * Takes a photo using the device camera
@@ -480,39 +498,41 @@ const HomePage: React.FC = () => {
   /**
    * Takes a photo of the etalase using the device camera
    */
-  const takeEtalase = async () => {
-    console.log("Taking photo...");
+  const takeEtalase = () =>
+    withLoading(async () => {
+      console.log("Taking photo...");
 
-    const options = {
-      mediaType: "photo",
-      includeBase64: true,
-      quality: 0.5,
-    };
+      const options = {
+        mediaType: "photo",
+        includeBase64: true,
+        quality: 0.5,
+      };
 
-    const result = await ImagePicker.launchCameraAsync(options);
+      const result = await ImagePicker.launchCameraAsync(options);
 
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const asset = result.assets[0];
-      setEtalaseImage(asset.uri);
-      await handleEtalaseUpload(asset.uri);
-    } else {
-      console.log("Camera error: ", result.error);
-    }
-  };
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setEtalaseImage(asset.uri);
+        await handleEtalaseUpload(asset.uri);
+      } else {
+        console.log("Camera error: ", result.error);
+      }
+    });
 
   /**
    * Handles the upload of the attendance photo
    */
-  const handleUpload = async (imageUri: string) => {
-    try {
-      const imageUrl = await uploadImageToCloudinary(imageUri);
-      console.log("Image URL:", imageUrl);
-      setImageUrl(imageUrl);
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-      Alert.alert("Error", "Failed to upload image.");
-    }
-  };
+  const handleUpload = async (imageUri: string) =>
+    withLoading(async () => {
+      try {
+        const imageUrl = await uploadImageToCloudinary(imageUri);
+        console.log("Image URL:", imageUrl);
+        setImageUrl(imageUrl);
+      } catch (error) {
+        console.error("Failed to upload image:", error);
+        Alert.alert("Error", "Failed to upload image.");
+      }
+    });
 
   /**
    * Retrieves the address from given coordinates
@@ -540,79 +560,81 @@ const HomePage: React.FC = () => {
   /**
    * Creates an attendance record
    */
-  const createAbsen = async (etalaseUrl: string) => {
-    if (isLoading) {
-      Alert.alert("Loading", "Please wait until all data is loaded.");
-      return;
-    }
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found in AsyncStorage");
-      }
-
-      if (!imageUrl || !etalaseUrl || !location) {
-        Alert.alert(
-          "Error",
-          "Please capture the images and retrieve location."
-        );
+  const createAbsen = (etalaseUrl: string) =>
+    withLoading(async () => {
+      if (isLoading) {
+        Alert.alert("Loading", "Please wait until all data is loaded.");
         return;
       }
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
+        }
 
-      const { latitude, longitude } = location.coords;
-      const address = await getAddressFromCoordinates(latitude, longitude);
+        if (!imageUrl || !etalaseUrl || !location) {
+          Alert.alert(
+            "Error",
+            "Please capture the images and retrieve location."
+          );
+          return;
+        }
 
-      const absenData = {
-        userId,
-        imageUrl,
-        etalaseUrl,
-        location: {
-          latitude,
-          longitude,
-          address,
-        },
-      };
+        const { latitude, longitude } = location.coords;
+        const address = await getAddressFromCoordinates(latitude, longitude);
 
-      const response = await axios.post(`${apiUrl}/createAbsen`, absenData);
-
-      if (response.status === 200) {
-        Alert.alert("Success", "Absen created successfully.");
-        const today = new Date().toISOString().split("T")[0];
-
-        setMarkedDates((prevDates) => ({
-          ...prevDates,
-          [today]: {
-            selected: true,
-            selectedColor: statusColors["Hadir"],
-            selectedTextColor: "white",
+        const absenData = {
+          userId,
+          imageUrl,
+          etalaseUrl,
+          location: {
+            latitude,
+            longitude,
+            address,
           },
-        }));
-        setLocation(null);
-        setImageUrl("");
-        setEtalaseUrl("");
-        checkAttendance();
-        checkHome();
-        getTime();
+        };
+
+        const response = await axios.post(`${apiUrl}/createAbsen`, absenData);
+
+        if (response.status === 200) {
+          Alert.alert("Success", "Absen created successfully.");
+          const today = new Date().toISOString().split("T")[0];
+
+          setMarkedDates((prevDates) => ({
+            ...prevDates,
+            [today]: {
+              selected: true,
+              selectedColor: statusColors["Hadir"],
+              selectedTextColor: "white",
+            },
+          }));
+          setLocation(null);
+          setImageUrl("");
+          setEtalaseUrl("");
+          checkAttendance();
+          checkHome();
+          getTime();
+        }
+      } catch (error) {
+        console.error("Error creating absen:", error);
+        Alert.alert("Error", "Failed to create absen.");
       }
-    } catch (error) {
-      console.error("Error creating absen:", error);
-      Alert.alert("Error", "Failed to create absen.");
-    }
-  };
+    });
 
   /**
    * Handles the upload of the etalase photo
    */
-  const handleEtalaseUpload = async (imageUri: string) => {
-    try {
-      const imageUrl = await uploadEtalaseToCloudinary(imageUri);
-      setEtalaseUrl(imageUrl);
-      createAbsen(imageUrl);
-    } catch (error) {
-      console.error("Failed to upload etalase image:", error);
-      Alert.alert("Error", "Failed to upload etalase image.");
-    }
-  };
+  const handleEtalaseUpload = (imageUri: string) =>
+    withLoading(async () => {
+      try {
+        const imageUrl = await uploadEtalaseToCloudinary(imageUri);
+        setEtalaseUrl(imageUrl);
+        createAbsen(imageUrl);
+      } catch (error) {
+        console.error("Failed to upload etalase image:", error);
+        Alert.alert("Error", "Failed to upload etalase image.");
+      }
+    });
 
   /**
    * Uploads the etalase image to Cloudinary
@@ -705,103 +727,108 @@ const HomePage: React.FC = () => {
   /**
    * Submits the absence request form
    */
-  const submitForm = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found in AsyncStorage");
-      }
-
-      if (!alasanInput) {
-        Alert.alert("Error", "Please fill in all fields and select an image.");
-        return;
-      }
-
-      const today = new Date().toISOString().split("T")[0];
-
-      console.log("Saving data...");
-      const saveResponse = await axios.post(
-        `${apiUrl}/uploadIzin?userId=${userId}&date=${today}`,
-        {
-          alasanInput,
-          value,
+  const submitForm = () =>
+    withLoading(async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
         }
-      );
-      console.log("Save Response:", saveResponse.data);
 
-      setMarkedDates((prevDates) => ({
-        ...prevDates,
-        [today]: {
-          selected: true,
-          selectedColor: statusColors[value as keyof typeof statusColors],
-          selectedTextColor: "white",
-        },
-      }));
+        if (!alasanInput) {
+          Alert.alert(
+            "Error",
+            "Please fill in all fields and select an image."
+          );
+          return;
+        }
 
-      setAlesanInput("");
-      setValue("");
-      setIzingModalVisible(false);
+        const today = new Date().toISOString().split("T")[0];
 
-      console.log("Form submission successful. Showing alert.");
-      Alert.alert("Success", "Form submitted successfully.");
-    } catch (error: any) {
-      console.error(
-        "Error submitting form:",
-        error.response ? error.response.data : error.message
-      );
-      Alert.alert("Error", "Failed to submit form.");
-    }
-  };
+        console.log("Saving data...");
+        const saveResponse = await axios.post(
+          `${apiUrl}/uploadIzin?userId=${userId}&date=${today}`,
+          {
+            alasanInput,
+            value,
+          }
+        );
+        console.log("Save Response:", saveResponse.data);
+
+        setMarkedDates((prevDates) => ({
+          ...prevDates,
+          [today]: {
+            selected: true,
+            selectedColor: statusColors[value as keyof typeof statusColors],
+            selectedTextColor: "white",
+          },
+        }));
+
+        setAlesanInput("");
+        setValue("");
+        setIzingModalVisible(false);
+
+        console.log("Form submission successful. Showing alert.");
+        Alert.alert("Success", "Form submitted successfully.");
+      } catch (error: any) {
+        console.error(
+          "Error submitting form:",
+          error.response ? error.response.data : error.message
+        );
+        Alert.alert("Error", "Failed to submit form.");
+      }
+    });
 
   /**
    * Marks the user as gone home for the day
    */
-  const absenPulang = async () => {
-    try {
-      const userId = await AsyncStorage.getItem("userId");
-      if (!userId) {
-        throw new Error("User ID not found in AsyncStorage");
-      }
+  const absenPulang = () =>
+    withLoading(async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in AsyncStorage");
+        }
 
-      Alert.alert("Confirm", "Are you sure?", [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "OK",
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              const response = await axios.put(
-                `${apiUrl}/absen-pulang/${userId}`
-              );
-
-              if (response.status === 200) {
-                console.log("Absen Pulang Response:", response.data);
-                Alert.alert("Success", response.data.message);
-                checkHome();
-                getTime();
-              } else {
-                Alert.alert("Error", "Unexpected response from the server.");
-              }
-            } catch (error) {
-              console.error("Error during absen pulang:", error);
-              Alert.alert(
-                "Error",
-                error.response?.data?.message || "Failed to mark attendance."
-              );
-            } finally {
-              setIsLoading(false);
-            }
+        Alert.alert("Confirm", "Are you sure?", [
+          {
+            text: "Cancel",
+            style: "cancel",
           },
-        },
-      ]);
-    } catch (error) {
-      console.error("Error during absen pulang:", error);
-      Alert.alert("Error", "Failed to mark attendance.");
-    }
-  };
+          {
+            text: "OK",
+            onPress: async () => {
+              try {
+                setIsLoading(true);
+                const response = await axios.put(
+                  `${apiUrl}/absen-pulang/${userId}`
+                );
+
+                if (response.status === 200) {
+                  console.log("Absen Pulang Response:", response.data);
+                  Alert.alert("Success", response.data.message);
+                  checkHome();
+                  getTime();
+                } else {
+                  Alert.alert("Error", "Unexpected response from the server.");
+                }
+              } catch (error) {
+                console.error("Error during absen pulang:", error);
+                Alert.alert(
+                  "Error",
+                  error.response?.data?.message || "Failed to mark attendance."
+                );
+              } finally {
+                setIsLoading(false);
+              }
+            },
+          },
+        ]);
+      } catch (error) {
+        console.error("Error during absen pulang:", error);
+        Alert.alert("Error", "Failed to mark attendance.");
+      }
+    });
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   const currentDay = new Date().getDay(); // 0 is Sunday, 1 is Monday, etc.
   // Function to calculate attendance based on selected month
@@ -862,6 +889,12 @@ const HomePage: React.FC = () => {
   console.log(markedDates);
   return (
     <View style={{ flex: 1 }}>
+      {isLoading && (
+        <View style={styles.spinnerOverlay}>
+          <ActivityIndicator size="large" color="#0000ff" />
+        </View>
+      )}
+
       <Header onToggleSidenav={toggleSidenav} />
 
       {isSidenavVisible && (
@@ -901,7 +934,11 @@ const HomePage: React.FC = () => {
 
         <View className="flex flex-row flex-wrap justify-center gap-4">
           <TouchableOpacity
-            className="bg-[#159847] w-[160px] rounded-md py-3 px-1"
+            className={`w-[160px] rounded-md py-3 px-1 ${
+              hasAttendedToday || hasIzinToday
+                ? "bg-[#159847] opacity-50"
+                : "bg-[#159847]"
+            }`}
             onPress={() => setAbsenModalVisible(true)}
             disabled={hasAttendedToday || hasIzinToday} // Disable button if the user has attended today
           >
@@ -972,7 +1009,11 @@ const HomePage: React.FC = () => {
             </View>
           </Modal>
           <TouchableOpacity
-            className="bg-[#F23737] w-[160px] rounded-md py-3 px-1"
+            className={`w-[160px] rounded-md py-3 px-1 ${
+              hasGoneHome || hasIzinToday || isGoneHomeDisabled
+                ? "bg-[#F23737] opacity-50"
+                : "bg-[#F23737]"
+            }`}
             onPress={absenPulang}
             disabled={hasGoneHome || hasIzinToday || isGoneHomeDisabled} // Disable button if the user has gone home today
           >
@@ -981,7 +1022,11 @@ const HomePage: React.FC = () => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            className="bg-[#00CABE] w-[160px] rounded-md py-3 px-1"
+            className={`w-[160px] rounded-md py-3 px-1 ${
+              hasAttendedToday || hasIzinToday
+                ? "bg-[#00CABE] opacity-50"
+                : "bg-[#00CABE]"
+            }`}
             onPress={() => setIzingModalVisible(true)}
             disabled={hasAttendedToday || hasIzinToday}
           >
@@ -1113,18 +1158,7 @@ const HomePage: React.FC = () => {
           </View>
           <Text className="text-sm text-center">Hadir</Text>
         </View>
-        <View className="flex items-center justify-center">
-          <View
-            className="pt-1"
-            style={[styles.legendDot, { backgroundColor: "#F2D437" }]}
-          >
-            <Text className="text-sm text-center text-white">
-              {" "}
-              {attendanceCounts.libur}
-            </Text>
-          </View>
-          <Text className="text-sm text-center">Libur</Text>
-        </View>
+
         <View className="flex items-center justify-center">
           <View
             className="pt-1"
@@ -1140,7 +1174,7 @@ const HomePage: React.FC = () => {
         <View className="flex items-center justify-center">
           <View
             className="pt-1"
-            style={[styles.legendDot, { backgroundColor: "#B0AF9F" }]}
+            style={[styles.legendDot, { backgroundColor: "#F2D437" }]}
           >
             <Text className="text-sm text-center text-white">
               {" "}
@@ -1229,6 +1263,17 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 5,
+  },
+  spinnerOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
   },
 });
 

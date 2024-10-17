@@ -12,7 +12,7 @@ import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NGROK_API } from "@env";
-
+import { Image } from "expo-image";
 const Login = () => {
   const apiUrl = NGROK_API;
 
@@ -82,7 +82,13 @@ const Login = () => {
         className="w-full max-w-md px-5 py-10 bg-white"
       >
         <View className="flex gap-4">
-          <Text className="text-lg font-extrabold">Login!</Text>
+          <View className="flex flex-row items-center justify-between">
+            <Text className="text-lg font-extrabold">Login!</Text>
+            <Image
+              source={require("../assets/logo2.png")}
+              className="w-[40px] h-[47px]"
+            />
+          </View>
 
           <View className="">
             <View className="flex flex-col gap-4">
