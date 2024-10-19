@@ -190,14 +190,17 @@ const AdminPage: React.FC = () => {
   }, []);
   const saveTokenToBackend = async (token) => {
     const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
-    const response = await fetch(`${apiUrl}/expo-push-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // Include the user's auth token if needed
-      },
-      body: JSON.stringify({ userId, expoPushToken: token }),
-    });
+    const response = await fetch(
+      `https://queenfoodbackend-production.up.railway.app/expo-push-token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Include the user's auth token if needed
+        },
+        body: JSON.stringify({ userId, expoPushToken: token }),
+      }
+    );
 
     if (!response.ok) {
       console.error("Failed to save push token:", response.status);
@@ -238,9 +241,12 @@ const AdminPage: React.FC = () => {
         const token = await AsyncStorage.getItem("authToken");
 
         // Fetch Izin Data
-        const izinResponse = await fetch(`${apiUrl}/table-izin`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const izinResponse = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/table-izin`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         if (!izinResponse.ok) {
           Alert.alert("Error", "Failed to fetch izin");
@@ -273,9 +279,12 @@ const AdminPage: React.FC = () => {
         setIzinTableData(formattedIzinData);
 
         // Fetch Attendance Data
-        const absenResponse = await fetch(`${apiUrl}/table-absen`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const absenResponse = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/table-absen`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         if (!absenResponse.ok) {
           Alert.alert("Error", "Failed to fetch attendance");
@@ -319,14 +328,17 @@ const AdminPage: React.FC = () => {
         {
           text: "Approve",
           onPress: async () => {
-            const response = await fetch(`${apiUrl}/accept-status/`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json", // Specify content type
-              },
-              body: JSON.stringify({ id_izin, id_akun, value, today }), // Send id_izin in the body
-            });
+            const response = await fetch(
+              `https://queenfoodbackend-production.up.railway.app/accept-status/`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json", // Specify content type
+                },
+                body: JSON.stringify({ id_izin, id_akun, value, today }), // Send id_izin in the body
+              }
+            );
 
             if (!response.ok) {
               Alert.alert("Error", "Failed to approve izin");
@@ -348,14 +360,17 @@ const AdminPage: React.FC = () => {
         {
           text: "Reject",
           onPress: async () => {
-            const response = await fetch(`${apiUrl}/reject-status/`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json", // Specify content type
-              },
-              body: JSON.stringify({ id_izin, id_akun, today, value }), // Send id_izin in the body
-            });
+            const response = await fetch(
+              `https://queenfoodbackend-production.up.railway.app/reject-status/`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json", // Specify content type
+                },
+                body: JSON.stringify({ id_izin, id_akun, today, value }), // Send id_izin in the body
+              }
+            );
 
             if (!response.ok) {
               Alert.alert("Error", "Failed to reject izin");
@@ -391,9 +406,12 @@ const AdminPage: React.FC = () => {
     const getStats = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(`${apiUrl}/employee-stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/employee-stats`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         if (!response.ok) {
           Alert.alert("Error", "Failed to fetch statistics");
@@ -486,11 +504,7 @@ const AdminPage: React.FC = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      {isLoading && (
-        <View style={styles.spinnerOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
+      <SpinnerOverlay visible={isLoading} />
 
       <Header onToggleSidenav={toggleSidenav} />
 
@@ -671,7 +685,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: 9999,
   },
 });
 

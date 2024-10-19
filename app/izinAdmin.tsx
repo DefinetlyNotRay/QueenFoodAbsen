@@ -20,6 +20,7 @@ import SidenavAdmin from "../components/SidenavAdmin";
 import { Dropdown } from "react-native-element-dropdown";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { useFocusEffect } from "@react-navigation/native";
+import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const izinAdmin = () => {
   const apiUrl = NGROK_API;
@@ -131,9 +132,12 @@ const izinAdmin = () => {
           throw new Error("User ID not found in AsyncStorage");
         }
         // Fetch Izin Data
-        const izinResponse = await fetch(`${apiUrl}/table-izin-admin`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const izinResponse = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/table-izin-admin`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         if (!izinResponse.ok) {
           Alert.alert("Error", "Failed to fetch izin");
@@ -197,19 +201,17 @@ const izinAdmin = () => {
         console.error("Failed to fetch data:", error);
       }
     });
-  const formatDate = (date: Date) =>
-    withLoading(async () => {
-      const day = date.getDate().toString().padStart(2, "0");
-      const month = (date.getMonth() + 1).toString().padStart(2, "0");
-      const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
-      return `${day}/${month}/${year}`;
-    });
+  const formatDate = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear().toString().slice(-2);
+    return `${day}/${month}/${year}`;
+  };
 
-  const parseDate = (dateString) =>
-    withLoading(async () => {
-      const [year, month, day] = dateString.split("/");
-      return new Date(year, month - 1, day); // month is zero-based in JavaScript
-    });
+  const parseDate = (dateString: string): Date => {
+    const [day, month, year] = dateString.split("/");
+    return new Date(parseInt(`20${year}`), parseInt(month) - 1, parseInt(day));
+  };
 
   useEffect(() => {
     const filterData = () => {
@@ -297,14 +299,17 @@ const izinAdmin = () => {
       console.log("Approving izin with ID:", id_izin); // Debug id_izin
 
       try {
-        const response = await fetch(`${apiUrl}/accept-status/`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id_izin }), // Ensure id_izin is correctly passed
-        });
+        const response = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/accept-status/`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id_izin }), // Ensure id_izin is correctly passed
+          }
+        );
 
         const responseData = await response.json(); // Parse the response
 
@@ -329,14 +334,17 @@ const izinAdmin = () => {
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
 
-      const response = await fetch(`${apiUrl}/reject-status/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json", // Specify content type
-        },
-        body: JSON.stringify({ id_izin }), // Send id_izin in the body
-      });
+      const response = await fetch(
+        `https://queenfoodbackend-production.up.railway.app/reject-status/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json", // Specify content type
+          },
+          body: JSON.stringify({ id_izin }), // Send id_izin in the body
+        }
+      );
 
       if (!response.ok) {
         Alert.alert("Error", "Failed to reject izin");
@@ -355,11 +363,7 @@ const izinAdmin = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      {isLoading && (
-        <View style={styles.spinnerOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
+      <SpinnerOverlay visible={isLoading} />
 
       <Header onToggleSidenav={toggleSidenav} />
 
@@ -486,7 +490,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: 9999,
   },
   blurContainer: {
     ...StyleSheet.absoluteFillObject,

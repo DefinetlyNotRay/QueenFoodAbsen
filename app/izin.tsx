@@ -17,6 +17,7 @@ import Sidenav from "../components/Sidenav";
 import { BlurView } from "expo-blur";
 import { Table, Row, Rows } from "react-native-table-component";
 import { NGROK_API } from "@env";
+import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const izin = () => {
   const apiUrl = NGROK_API;
@@ -71,7 +72,7 @@ const izin = () => {
         }
         // Fetch Izin Data
         const izinResponse = await fetch(
-          `${apiUrl}/table-izin-karyawan/${userId}`,
+          `https://queenfoodbackend-production.up.railway.app/table-izin-karyawan/${userId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -107,11 +108,7 @@ const izin = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      {isLoading && (
-        <View style={styles.spinnerOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
+      <SpinnerOverlay visible={isLoading} />
 
       <Header onToggleSidenav={toggleSidenav} />
 
@@ -178,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: 9999,
   },
   blurContainer: {
     ...StyleSheet.absoluteFillObject,

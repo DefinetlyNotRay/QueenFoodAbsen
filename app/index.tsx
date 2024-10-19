@@ -36,10 +36,13 @@ const Login = () => {
   }, []);
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${apiUrl}/login`, {
-        username,
-        password,
-      });
+      const response = await axios.post(
+        `https://queenfoodbackend-production.up.railway.app/login`,
+        {
+          username,
+          password,
+        }
+      );
 
       if (response.data.success) {
         await AsyncStorage.setItem("authToken", response.data.token);

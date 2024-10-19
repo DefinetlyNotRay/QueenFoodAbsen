@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
+import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 import { BlurView } from "expo-blur";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
@@ -49,7 +50,7 @@ const absenAdmin: React.FC = () => {
   const [isSidenavVisible, setSidenavVisible] = useState(false);
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
-
+  const [isLoading, setIsLoading] = useState(false);
   const [tableData, setTableData] = useState([
     ["1", "Alex", "01/09/24", "-", "Hadir"],
   ]);
@@ -58,7 +59,17 @@ const absenAdmin: React.FC = () => {
     setSelectedImage(imageUrl);
     setModalVisible(true);
   };
-
+  const withLoading = async (func: () => Promise<void>) => {
+    setIsLoading(true);
+    try {
+      await func();
+    } catch (error) {
+      console.error("Error:", error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const closeImageModal = () => {
     setModalVisible(false);
     setSelectedImage(null);
@@ -125,92 +136,74 @@ const absenAdmin: React.FC = () => {
     fetchData(); // Initial data fetch
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-
-      // Fetch Attendance Data
-      const absenResponse = await fetch(`${apiUrl}/table-absen`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!absenResponse.ok) {
-        Alert.alert("Error", "Failed to fetch attendance");
-        return;
-      }
-
-      const absenData = await absenResponse.json();
-      const formattedAbsenData = absenData.map((row, index) => {
-        const absenTime = new Date(row.absen_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        const absenDate = new Date(row.absen_time);
-        const formattedDate = formatDate(absenDate);
-        const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-
-        return [
-          index + 1,
-          row.nama_karyawan,
-          formattedDate,
-          row.foto_diri, // Store the URL string instead of the JSX component
-          row.foto_etalase, // Store the URL string instead of the JSX component
-          row.lokasi,
-          absenTime,
-          pulangTime,
-          row.detail,
-        ];
-      });
-
-      setTableData(formattedAbsenData); // Set formattedAbsenData to state
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
-
-  useEffect(() => {
-    const checkAuth = async () => {
+  const fetchData = () =>
+    withLoading(async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
-        const level = await AsyncStorage.getItem("level");
-        if (level === "user") {
-          router.replace("/HomePage");
-        }
-        if (!token) {
-          router.replace("/index");
-        }
-      } catch (error) {
-        console.error("Failed to get auth token:", error);
-      }
-    };
 
-    checkAuth();
-  }, []);
+        // Fetch Attendance Data
+        const absenResponse = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/table-absen`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-  useEffect(() => {
-    const getStats = async () => {
-      try {
-        const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(`${apiUrl}/employee-stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!response.ok) {
-          Alert.alert("Error", "Failed to fetch statistics");
+        if (!absenResponse.ok) {
+          Alert.alert("Error", "Failed to fetch attendance");
           return;
         }
 
-        const data = await response.json();
-        setStats(data);
-      } catch (error) {
-        console.error("Failed to get stats:", error);
-      }
-    };
+        const absenData = await absenResponse.json();
+        const formattedAbsenData = absenData.map((row, index) => {
+          const absenTime = new Date(row.absen_time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          const absenDate = new Date(row.absen_time);
+          const formattedDate = formatDate(absenDate);
+          const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
 
-    getStats();
+          return [
+            index + 1,
+            row.nama_karyawan,
+            formattedDate,
+            row.foto_diri, // Store the URL string instead of the JSX component
+            row.foto_etalase, // Store the URL string instead of the JSX component
+            row.lokasi,
+            absenTime,
+            pulangTime,
+            row.detail,
+          ];
+        });
+
+        setTableData(formattedAbsenData); // Set formattedAbsenData to state
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    });
+
+  useEffect(() => {
+    const checkAuth = () =>
+      withLoading(async () => {
+        try {
+          const token = await AsyncStorage.getItem("authToken");
+          const level = await AsyncStorage.getItem("level");
+          if (level === "user") {
+            router.replace("/HomePage");
+          }
+          if (!token) {
+            router.replace("/index");
+          }
+        } catch (error) {
+          console.error("Failed to get auth token:", error);
+        }
+      });
+
+    checkAuth();
   }, []);
 
   const toggleSidenav = () => {
@@ -287,6 +280,7 @@ const absenAdmin: React.FC = () => {
   return (
     <View style={{ flex: 1 }}>
       <Header onToggleSidenav={toggleSidenav} />
+      <SpinnerOverlay visible={isLoading} />
 
       {isSidenavVisible && (
         <TouchableOpacity

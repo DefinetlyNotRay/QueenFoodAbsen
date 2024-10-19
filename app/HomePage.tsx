@@ -26,6 +26,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import izin from "./izin";
+import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 interface DecodedToken {
   id: string;
@@ -169,14 +170,17 @@ const HomePage: React.FC = () => {
   }, []);
   const saveTokenToBackend = async (token) => {
     const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
-    const response = await fetch(`${apiUrl}/expo-push-token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // Include the user's auth token if needed
-      },
-      body: JSON.stringify({ userId, expoPushToken: token }),
-    });
+    const response = await fetch(
+      `https://queenfoodbackend-production.up.railway.app/expo-push-token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Include the user's auth token if needed
+        },
+        body: JSON.stringify({ userId, expoPushToken: token }),
+      }
+    );
 
     if (!response.ok) {
       console.error("Failed to save push token:", response.status);
@@ -218,7 +222,7 @@ const HomePage: React.FC = () => {
 
       const today = new Date().toISOString().split("T")[0];
       const response = await axios.get(
-        `${apiUrl}/getTime?userId=${userId}&date=${today}`
+        `https://queenfoodbackend-production.up.railway.app/getTime?userId=${userId}&date=${today}`
       );
 
       // Mengakses data dari respons
@@ -282,7 +286,9 @@ const HomePage: React.FC = () => {
           throw new Error("User ID not found in AsyncStorage");
         }
 
-        const response = await axios.get(`${apiUrl}/attendance/${userId}`);
+        const response = await axios.get(
+          `https://queenfoodbackend-production.up.railway.app/attendance/${userId}`
+        );
         const attendanceData = response.data;
 
         // Get today's date and start date (September 1st)
@@ -351,7 +357,7 @@ const HomePage: React.FC = () => {
 
         const today = new Date().toISOString().split("T")[0];
         const response = await axios.get(
-          `${apiUrl}/checkAttendance?userId=${userId}&date=${today}`
+          `https://queenfoodbackend-production.up.railway.app/checkAttendance?userId=${userId}&date=${today}`
         );
 
         if (response.data.hasAttended) {
@@ -380,7 +386,7 @@ const HomePage: React.FC = () => {
 
         const today = new Date().toISOString().split("T")[0];
         const response = await axios.get(
-          `${apiUrl}/checkHome?userId=${userId}&date=${today}`
+          `https://queenfoodbackend-production.up.railway.app/checkHome?userId=${userId}&date=${today}`
         );
 
         if (response.data.hasAttended) {
@@ -407,7 +413,7 @@ const HomePage: React.FC = () => {
 
         const today = new Date().toISOString().split("T")[0];
         const response = await axios.get(
-          `${apiUrl}/checkIzin?userId=${userId}&date=${today}`
+          `https://queenfoodbackend-production.up.railway.app/checkIzin?userId=${userId}&date=${today}`
         );
 
         if (response.data.hasAttended) {
@@ -431,7 +437,7 @@ const HomePage: React.FC = () => {
 
         const today = new Date().toISOString().split("T")[0];
         const response = await axios.get(
-          `${apiUrl}/checkIzinApproveOrReject?userId=${userId}&date=${today}`
+          `https://queenfoodbackend-production.up.railway.app/checkIzinApproveOrReject?userId=${userId}&date=${today}`
         );
 
         if (response.data.hasIzinStatus) {
@@ -594,7 +600,10 @@ const HomePage: React.FC = () => {
           },
         };
 
-        const response = await axios.post(`${apiUrl}/createAbsen`, absenData);
+        const response = await axios.post(
+          `https://queenfoodbackend-production.up.railway.app/createAbsen`,
+          absenData
+        );
 
         if (response.status === 200) {
           Alert.alert("Success", "Absen created successfully.");
@@ -747,7 +756,7 @@ const HomePage: React.FC = () => {
 
         console.log("Saving data...");
         const saveResponse = await axios.post(
-          `${apiUrl}/uploadIzin?userId=${userId}&date=${today}`,
+          `https://queenfoodbackend-production.up.railway.app/uploadIzin?userId=${userId}&date=${today}`,
           {
             alasanInput,
             value,
@@ -801,7 +810,7 @@ const HomePage: React.FC = () => {
               try {
                 setIsLoading(true);
                 const response = await axios.put(
-                  `${apiUrl}/absen-pulang/${userId}`
+                  `https://queenfoodbackend-production.up.railway.app/absen-pulang/${userId}`
                 );
 
                 if (response.status === 200) {
@@ -889,11 +898,7 @@ const HomePage: React.FC = () => {
   console.log(markedDates);
   return (
     <View style={{ flex: 1 }}>
-      {isLoading && (
-        <View style={styles.spinnerOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
+      <SpinnerOverlay visible={isLoading} />
 
       <Header onToggleSidenav={toggleSidenav} />
 
@@ -1273,7 +1278,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: 9999,
   },
 });
 

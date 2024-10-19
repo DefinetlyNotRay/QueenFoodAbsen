@@ -19,6 +19,7 @@ import { Table, Row, Rows } from "react-native-table-component";
 import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
 import axios from "axios";
+import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const createSales = () => {
   const apiUrl = NGROK_API;
@@ -85,9 +86,12 @@ const createSales = () => {
           throw new Error("User ID not found in AsyncStorage");
         }
         // Fetch Izin Data
-        const izinResponse = await fetch(`${apiUrl}/table-sales`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const izinResponse = await fetch(
+          `https://queenfoodbackend-production.up.railway.app/table-sales`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         if (!izinResponse.ok) {
           const errorResponse = await izinResponse.json();
@@ -132,9 +136,12 @@ const createSales = () => {
           text: "Edit",
           onPress: async () => {
             try {
-              const response = await axios.get(`${apiUrl}/getEditSalesData`, {
-                params: { userId: idAkun }, // Pass idAkun as a query parameter
-              });
+              const response = await axios.get(
+                `https://queenfoodbackend-production.up.railway.app/getEditSalesData`,
+                {
+                  params: { userId: idAkun }, // Pass idAkun as a query parameter
+                }
+              );
 
               if (response.status === 200) {
                 // Set data from the response to the state
@@ -164,9 +171,12 @@ const createSales = () => {
           text: "Hapus",
           onPress: async () => {
             try {
-              const response = await axios.delete(`${apiUrl}/deleteSales`, {
-                params: { userId: idAkun }, // Pass idAkun as a query parameter
-              });
+              const response = await axios.delete(
+                `https://queenfoodbackend-production.up.railway.app/deleteSales`,
+                {
+                  params: { userId: idAkun }, // Pass idAkun as a query parameter
+                }
+              );
 
               if (response.status === 200) {
                 Alert.alert("Success", "Sales deleted successfully.");
@@ -209,7 +219,10 @@ const createSales = () => {
               editUserId,
             };
             // Fetch Izin Data
-            const response = await axios.post(`${apiUrl}/editSales`, salesData);
+            const response = await axios.post(
+              `https://queenfoodbackend-production.up.railway.app/editSales`,
+              salesData
+            );
 
             if (response.status === 200) {
               Alert.alert("Success", "Sales Edited successfully.");
@@ -246,7 +259,7 @@ const createSales = () => {
             };
             // Fetch Izin Data
             const response = await axios.post(
-              `${apiUrl}/createSales`,
+              `https://queenfoodbackend-production.up.railway.app/createSales`,
               salesData
             );
 
@@ -266,11 +279,7 @@ const createSales = () => {
     });
   return (
     <View style={{ flex: 1 }}>
-      {isLoading && (
-        <View style={styles.spinnerOverlay}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
+      <SpinnerOverlay visible={isLoading} />
 
       <Header onToggleSidenav={toggleSidenav} />
 
@@ -461,7 +470,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
+    zIndex: 9999,
   },
   blurContainer: {
     ...StyleSheet.absoluteFillObject,

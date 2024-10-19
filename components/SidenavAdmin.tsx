@@ -64,7 +64,7 @@ const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.5,
           shadowRadius: 10,
-          zIndex: 1000,
+          zIndex: 9999,
         },
       ]}
     >
