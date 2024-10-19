@@ -79,7 +79,7 @@ const izin = () => {
         }
 
         const izinData = await izinResponse.json();
-        const formattedIzinData = izinData.map((row, index) => [
+        const formattedIzinData = izinData.map((row: any, index: number) => [
           index + 1,
           row.tanggal_izin.split("T")[0],
           row.alasan,

@@ -141,7 +141,7 @@ const izinAdmin = () => {
         }
 
         const izinData = await izinResponse.json();
-        const formattedIzinData = izinData.map((row, index) => {
+        const formattedIzinData = izinData.map((row: any, index: number) => {
           const date = new Date(row.tanggal_izin);
           const formattedDate = formatDate(date);
           return [
@@ -246,7 +246,7 @@ const izinAdmin = () => {
             <>
               <TouchableOpacity
                 className="bg-[#228E47] p-1 rounded"
-                onPress={() => handleApprove(row[6])} // Use the original id_izin
+                onPress={() => handleApprove(Number(row[6]))} // Convert to number
               >
                 <Text className="text-white text-center text-[10px]">
                   Approve
@@ -254,7 +254,7 @@ const izinAdmin = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 className="bg-[#F23737] p-1 rounded"
-                onPress={() => handleReject(row[6])} // Use the original id_izin
+                onPress={() => handleReject(Number(row[6]))} // Use the original id_izin
               >
                 <Text className="text-white text-center text-[10px]">
                   Reject
@@ -283,7 +283,7 @@ const izinAdmin = () => {
     filterData();
   }, [selectedDate1, selectedDate2, value, tableIzinData]);
 
-  const handleApprove = (id_izin) =>
+  const handleApprove = (id_izin: number) =>
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
 
@@ -326,7 +326,7 @@ const izinAdmin = () => {
       }
     });
 
-  const handleReject = (id_izin) =>
+  const handleReject = (id_izin: number) =>
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
 

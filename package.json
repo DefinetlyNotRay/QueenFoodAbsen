@@ -4,8 +4,8 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "react-native-reanimated": "~3.10.1",
     "react-native-share": "^11.0.3",
     "react-native-table-component": "^1.2.2",
+    "sharp": "^0.33.5",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

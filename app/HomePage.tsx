@@ -14,7 +14,7 @@ import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Sidenav from "../components/Sidenav";
 import { BlurView } from "expo-blur";
-import { Calendar } from "react-native-calendars";
+import { Calendar, DateData } from "react-native-calendars";
 import { Dropdown } from "react-native-element-dropdown";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
@@ -28,6 +28,32 @@ interface DecodedToken {
   username: string;
   // Add other fields if needed
 }
+
+// At the top of your file, add this type definition
+type StatusColor = {
+  [key: string]: string;
+};
+
+type DateMarking = {
+  selected: boolean;
+  selectedColor: string;
+  dotColor?: string;
+  selectedTextColor?: string;
+};
+
+type DatesObject = {
+  [date: string]: DateMarking;
+};
+
+// Add this type definition at the top of your file
+type MarkedDates = {
+  [date: string]: {
+    selected: boolean;
+    selectedColor: string;
+    dotColor?: string;
+    selectedTextColor?: string;
+  };
+};
 
 const HomePage: React.FC = () => {
   // State variables
@@ -69,7 +95,7 @@ const HomePage: React.FC = () => {
     alpha: 0,
   });
   // Constants
-  const statusColors = {
+  const statusColors: StatusColor = {
     Hadir: "#159847",
     Izin: "#00CABE",
     Sakit: "#F2D437",
@@ -162,7 +188,7 @@ const HomePage: React.FC = () => {
 
     registerForPushNotificationsAsync();
   }, []);
-  const saveTokenToBackend = async (token) => {
+  const saveTokenToBackend = async (token: string) => {
     const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
     const response = await fetch(
       `https://queenfoodbackend-production.up.railway.app/expo-push-token`,
@@ -290,7 +316,7 @@ const HomePage: React.FC = () => {
         const startDate = new Date("2024-10-17");
 
         // Initialize dates object with Alpha status for every day from startDate until today
-        const dates = {};
+        const dates: DatesObject = {};
         let currentDate = new Date(startDate);
 
         while (currentDate <= today) {
@@ -305,7 +331,7 @@ const HomePage: React.FC = () => {
         }
 
         // Update dates object based on attendance data
-        attendanceData.forEach((item) => {
+        attendanceData.forEach((item: any) => {
           const { absen_time, detail } = item;
           const date = absen_time.split("T")[0];
 
@@ -491,7 +517,7 @@ const HomePage: React.FC = () => {
       setSelectedImageAbsen(asset.uri);
       await handleUpload(asset.uri);
     } else {
-      console.log("Camera error: ", result.error);
+      console.log("Camera operation canceled or failed");
     }
   };
 
@@ -515,7 +541,7 @@ const HomePage: React.FC = () => {
         setEtalaseImage(asset.uri);
         await handleEtalaseUpload(asset.uri);
       } else {
-        console.log("Camera error: ", result.error);
+        console.log("Camera operation canceled or failed");
       }
     });
 
@@ -651,7 +677,7 @@ const HomePage: React.FC = () => {
       uri: imageUri,
       type: "image/jpeg",
       name: `${userId}.jpg`,
-    });
+    } as any);
     formData.append("upload_preset", "my_upload_preset");
 
     try {
@@ -668,7 +694,8 @@ const HomePage: React.FC = () => {
 
       setEtelaseModal(false);
       return response.data.secure_url;
-    } catch (error) {
+    } catch (error: any) {
+      // Add ': any' here
       console.error(
         "Error uploading image:",
         error.response?.data || error.message
@@ -688,7 +715,7 @@ const HomePage: React.FC = () => {
       uri: imageUri,
       type: "image/jpeg",
       name: `${userId}.jpg`,
-    });
+    } as any);
     formData.append("upload_preset", "my_upload_preset");
 
     try {
@@ -819,7 +846,8 @@ const HomePage: React.FC = () => {
                 console.error("Error during absen pulang:", error);
                 Alert.alert(
                   "Error",
-                  error.response?.data?.message || "Failed to mark attendance."
+                  (error as any).response?.data?.message ||
+                    "Failed to mark attendance."
                 );
               } finally {
                 setIsLoading(false);
@@ -835,7 +863,11 @@ const HomePage: React.FC = () => {
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   const currentDay = new Date().getDay(); // 0 is Sunday, 1 is Monday, etc.
   // Function to calculate attendance based on selected month
-  const calculateAttendanceCounts = (markedDates, month, year) => {
+  const calculateAttendanceCounts = (
+    markedDates: MarkedDates,
+    month: number,
+    year: number
+  ) => {
     const attendanceCounts = {
       hadir: 0,
       libur: 0,
@@ -864,7 +896,7 @@ const HomePage: React.FC = () => {
   };
 
   // Handle month change
-  const handleMonthChange = (monthData) => {
+  const handleMonthChange = (monthData: { month: number; year: number }) => {
     const newMonth = monthData.month;
     const newYear = monthData.year;
 
@@ -1115,7 +1147,7 @@ const HomePage: React.FC = () => {
       <View className="p-5 mx-5 mb-3 bg-white rounded-xl">
         <Text className="text-center text-[16px] font-bold">Presensi</Text>
         <Calendar
-          onDayPress={(day) => console.log(day)}
+          onDayPress={(day: DateData) => console.log(day)}
           markedDates={markedDates}
           onMonthChange={handleMonthChange} // This will trigger when the user changes months
           theme={{
