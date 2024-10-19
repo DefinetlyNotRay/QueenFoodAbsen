@@ -5,16 +5,14 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  PermissionsAndroid,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Sidenav from "../components/Sidenav";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 import { BlurView } from "expo-blur";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
@@ -31,7 +29,6 @@ import * as XLSX from "xlsx";
 import * as Sharing from "expo-sharing";
 const AdminPage: React.FC = () => {
   const router = useRouter();
-  const apiUrl = NGROK_API;
 
   const [stats, setStats] = useState({
     totalEmployees: 0,

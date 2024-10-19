@@ -16,10 +16,9 @@ import SpinnerOverlay from "../components/SpinnerOverlayProps";
 import { BlurView } from "expo-blur";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
-import { Table, Row, Rows } from "react-native-table-component";
+import { Table, Row } from "react-native-table-component";
 import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
 
 import * as FileSystem from "expo-file-system";
@@ -27,7 +26,6 @@ import * as XLSX from "xlsx";
 import * as Sharing from "expo-sharing";
 const absenAdmin: React.FC = () => {
   const router = useRouter();
-  const apiUrl = NGROK_API;
   const [date, setDate] = useState(new Date());
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);

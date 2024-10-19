@@ -5,11 +5,8 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  Image,
   ScrollView,
   TextInput,
-  Modal,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -22,8 +19,6 @@ import axios from "axios";
 import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const createSales = () => {
-  const apiUrl = NGROK_API;
-
   const router = useRouter();
   const [namaSales, setNamaSales] = useState("");
   const [username, setUsername] = useState("");

@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  Image,
   TextInput,
-  ActivityIndicator,
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -16,16 +14,13 @@ import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Sidenav from "../components/Sidenav";
 import { BlurView } from "expo-blur";
-import { Calendar, CalendarProps } from "react-native-calendars";
+import { Calendar } from "react-native-calendars";
 import { Dropdown } from "react-native-element-dropdown";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import * as Location from "expo-location";
-import { NGROK_API } from "@env";
-import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
-import izin from "./izin";
 import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 interface DecodedToken {
@@ -64,7 +59,6 @@ const HomePage: React.FC = () => {
   const [pulangTime, setPulangTime] = useState("");
   const [locationDisplay, setLocationDisplay] = useState("");
   const router = useRouter();
-  const apiUrl = NGROK_API;
   const [expoPushToken, setExpoPushToken] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // Start with current month
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // Start with current year

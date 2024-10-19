@@ -5,10 +5,7 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  Image,
   ScrollView,
-  Modal,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -23,7 +20,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const izinAdmin = () => {
-  const apiUrl = NGROK_API;
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
   const router = useRouter();

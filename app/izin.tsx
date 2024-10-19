@@ -5,10 +5,7 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  Image,
   ScrollView,
-  Modal,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -20,8 +17,6 @@ import { NGROK_API } from "@env";
 import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const izin = () => {
-  const apiUrl = NGROK_API;
-
   const router = useRouter();
   const [tableIzinData, setIzinTableData] = useState([
     ["1", "Alex", "a", "Approve"],

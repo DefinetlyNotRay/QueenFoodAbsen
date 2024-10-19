@@ -14,8 +14,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NGROK_API } from "@env";
 import { Image } from "expo-image";
 const Login = () => {
-  const apiUrl = NGROK_API;
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
