@@ -22,8 +22,6 @@ import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
-import RNFS from "react-native-fs";
-import Share from "react-native-share";
 import * as FileSystem from "expo-file-system";
 import * as XLSX from "xlsx";
 import * as Sharing from "expo-sharing";
@@ -185,7 +183,7 @@ const AdminPage: React.FC = () => {
 
     registerForPushNotificationsAsync();
   }, []);
-  const saveTokenToBackend = async (token) => {
+  const saveTokenToBackend = async (token: string) => {
     const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
     const response = await fetch(
       `https://queenfoodbackend-production.up.railway.app/expo-push-token`,
@@ -227,7 +225,7 @@ const AdminPage: React.FC = () => {
   }, []);
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split("/").map(Number);
-    return new Date(`20${year}`, month - 1, day);
+    return new Date(Number(`20${year}`), month - 1, day);
   };
   useEffect(() => {
     fetchData(); // Initial data fetch
@@ -251,7 +249,7 @@ const AdminPage: React.FC = () => {
         }
 
         const izinData = await izinResponse.json();
-        const formattedIzinData = izinData.map((row, index) => [
+        const formattedIzinData = izinData.map((row: any, index: number) => [
           index + 1,
           row.nama_karyawan,
           row.alasan,
@@ -289,7 +287,7 @@ const AdminPage: React.FC = () => {
         }
 
         const absenData = await absenResponse.json();
-        const formattedAbsenData = absenData.map((row, index) => {
+        const formattedAbsenData = absenData.map((row: any, index: number) => {
           const absenTime = new Date(row.absen_time).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -316,7 +314,7 @@ const AdminPage: React.FC = () => {
       }
     });
 
-  const handleApprove = (id_izin, id_akun, value) =>
+  const handleApprove = (id_izin: number, id_akun: number, value: string) =>
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
       const today = new Date().toISOString().split("T")[0];
@@ -348,7 +346,7 @@ const AdminPage: React.FC = () => {
       ]);
     });
 
-  const handleReject = (id_izin, id_akun, value) =>
+  const handleReject = (id_izin: number, id_akun: number, value: string) =>
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
       const today = new Date().toISOString().split("T")[0];
@@ -620,22 +618,14 @@ const AdminPage: React.FC = () => {
             </TouchableOpacity>
           </View>
           <Text className="mt-2 mb-2 text-xl font-semibold">Izin</Text>
-          <View style={styles.tableContainer}>
+          <View>
             <ScrollView style={{ maxHeight: 280 }}>
               <Table borderStyle={styles.border}>
-                <Row
-                  data={izinTableHead}
-                  style={styles.tableHead}
-                  textStyle={styles.text}
-                />
+                <Row data={izinTableHead} textStyle={styles.text} />
                 {tableIzinData.length > 0 ? (
                   <Rows data={tableIzinData} textStyle={styles.text} />
                 ) : (
-                  <Row
-                    data={["No data yet"]}
-                    style={styles.tableRow}
-                    textStyle={styles.text}
-                  />
+                  <Row data={["No data yet"]} textStyle={styles.text} />
                 )}
               </Table>
             </ScrollView>

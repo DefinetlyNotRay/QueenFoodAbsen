@@ -28,7 +28,7 @@ const absenAdmin: React.FC = () => {
   const router = useRouter();
   const [date, setDate] = useState(new Date());
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -53,7 +53,7 @@ const absenAdmin: React.FC = () => {
     ["1", "Alex", "01/09/24", "-", "Hadir"],
   ]);
   const widthArr = [40, 150, 120, 100, 100, 100, 140, 140, 130];
-  const openImageModal = (imageUrl) => {
+  const openImageModal = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setModalVisible(true);
   };
@@ -128,7 +128,7 @@ const absenAdmin: React.FC = () => {
 
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split("/").map(Number);
-    return new Date(`20${year}`, month - 1, day);
+    return new Date(Number(`20${year}`), month - 1, day);
   };
   useEffect(() => {
     fetchData(); // Initial data fetch
@@ -153,7 +153,7 @@ const absenAdmin: React.FC = () => {
         }
 
         const absenData = await absenResponse.json();
-        const formattedAbsenData = absenData.map((row, index) => {
+        const formattedAbsenData = absenData.map((row: any, index: number) => {
           const absenTime = new Date(row.absen_time).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -508,11 +508,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 18,
   },
-  closeButton: {
-    backgroundColor: "blue",
-    padding: 10,
-    borderRadius: 5,
-  },
+
   exportButton: {
     backgroundColor: "#159847",
   },
@@ -575,12 +571,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+
   fullImage: {
     width: "90%",
     height: "70%",

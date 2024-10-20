@@ -7,6 +7,7 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -96,7 +97,7 @@ const createSales = () => {
         }
 
         const izinData = await izinResponse.json();
-        const formattedIzinData = izinData.map((row, index) => [
+        const formattedIzinData = izinData.map((row: any, index: number) => [
           index + 1,
           row.nama_karyawan,
           row.username,
@@ -123,7 +124,7 @@ const createSales = () => {
         console.error("Failed to fetch data:", error);
       }
     });
-  const handleEdit = (idAkun) =>
+  const handleEdit = (idAkun: string) =>
     withLoading(async () => {
       Alert.alert("Edit Akun", "Edit data ini?", [
         { text: "Batal", style: "cancel" },
@@ -158,7 +159,7 @@ const createSales = () => {
       ]);
     });
 
-  const handleDelete = (idAkun) =>
+  const handleDelete = (idAkun: string) =>
     withLoading(async () => {
       Alert.alert("Hapus Akun", "Apakah anda yakin ingin menghapus akun ini?", [
         { text: "Batal", style: "cancel" },
