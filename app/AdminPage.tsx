@@ -49,12 +49,8 @@ const AdminPage: React.FC = () => {
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
   const [expoPushToken, setExpoPushToken] = useState("");
 
-  const [tableData, setTableData] = useState([
-    ["1", "Alex", "01/09/24", "-", "Hadir"],
-  ]);
-  const [tableIzinData, setIzinTableData] = useState([
-    ["1", "Alex", "a", "Approve"],
-  ]);
+  const [tableData, setTableData] = useState([["-", "-", "-", "-", "-"]]);
+  const [tableIzinData, setIzinTableData] = useState([["-", "-", "-", "-"]]);
 
   const tableHead = [
     "No",
@@ -294,10 +290,16 @@ const AdminPage: React.FC = () => {
           });
           const absenDate = new Date(row.absen_time);
           const formattedDate = formatDate(absenDate);
-          const pulangTime = new Date(row.pulang_time).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+          let pulangTime;
+          if (row.pulang_time === null) {
+            pulangTime = "-";
+          } else {
+            pulangTime = new Date(row.pulang_time).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          }
+
           return [
             index + 1,
             row.nama_karyawan,

@@ -491,10 +491,7 @@ const HomePage: React.FC = () => {
       setTimeout(() => {
         setLoactionModal(false);
         setEtelaseModal(true);
-        Alert.alert(
-          "Location Retrieved",
-          `Latitude: ${currentLocation.coords.latitude}, Longitude: ${currentLocation.coords.longitude}`
-        );
+        Alert.alert("Location Sucessfully Retrieved");
       }, 1000);
     });
 

@@ -28,9 +28,7 @@ const izinAdmin = () => {
   const [isFocus, setIsFocus] = useState(false);
   const [value, setValue] = useState<string | null>(null);
 
-  const [tableIzinData, setIzinTableData] = useState([
-    ["1", "Alex", "a", "Approve"],
-  ]);
+  const [tableIzinData, setIzinTableData] = useState([["1", "-", "-", "-"]]);
   const [isLoading, setIsLoading] = useState(false);
   const withLoading = async (func: () => Promise<void>) => {
     setIsLoading(true);

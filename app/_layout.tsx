@@ -13,20 +13,21 @@ const _layout = () => {
         const token = await AsyncStorage.getItem("authToken");
         console.log("AuthToken:", token); // Debugging line
         if (!token) {
-          // If there's no token, redirect to the login page
+          // If no token, redirect to login page
           router.replace("/index");
-        } else {
-          // If there's a token, stay on the current page
-          setLoading(false);
         }
       } catch (error) {
-        setLoading(false); // Stop loading if there's an error
+        console.error("Error fetching token:", error); // Debugging line
+      } finally {
+        // Ensure loading state ends regardless of success or error
+        setLoading(false);
       }
     };
 
     checkAuth();
   }, []);
 
+  // Show a loading spinner until authentication check is done
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -43,7 +44,6 @@ const _layout = () => {
       <Stack.Screen name="izinAdmin" options={{ headerShown: false }} />
       <Stack.Screen name="createSales" options={{ headerShown: false }} />
       <Stack.Screen name="absenAdmin" options={{ headerShown: false }} />
-
       <Stack.Screen name="AdminPage" options={{ headerShown: false }} />
     </Stack>
   );

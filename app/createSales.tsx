@@ -25,7 +25,7 @@ const createSales = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const [userTable, setUserTable] = useState([["1", "Alex", "a", "Approve"]]);
+  const [userTable, setUserTable] = useState([["-", "-", "-", "-"]]);
 
   const [tambahModal, setTambahModalVisible] = useState(false);
   const [editModal, setEditModalVisible] = useState(false);

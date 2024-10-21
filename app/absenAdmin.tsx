@@ -49,9 +49,7 @@ const absenAdmin: React.FC = () => {
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [tableData, setTableData] = useState([
-    ["1", "Alex", "01/09/24", "-", "Hadir"],
-  ]);
+  const [tableData, setTableData] = useState([["-", "-", "-", "-", "-"]]);
   const widthArr = [40, 150, 120, 100, 100, 100, 140, 140, 130];
   const openImageModal = (imageUrl: string) => {
     setSelectedImage(imageUrl);

@@ -18,9 +18,7 @@ import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 const izin = () => {
   const router = useRouter();
-  const [tableIzinData, setIzinTableData] = useState([
-    ["1", "Alex", "a", "Approve"],
-  ]);
+  const [tableIzinData, setIzinTableData] = useState([["-", "-", "-", "-"]]);
   const izinTableHead = ["No", "Tanggal", "Alasan", "Tipe", "Status"];
   const [isLoading, setIsLoading] = useState(false);
   const withLoading = async (func: () => Promise<void>) => {
