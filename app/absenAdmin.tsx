@@ -103,11 +103,11 @@ const absenAdmin: React.FC = () => {
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri);
       } else {
-        Alert.alert("Error", "Sharing is not available on this device");
+        Alert.alert("Error", "Berbagi tidak tersedia di perangkat ini");
       }
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
-      Alert.alert("Error", "Failed to export data to Excel");
+      console.error("Error ekspor ke Excel:", error);
+      Alert.alert("Error", "Gagal mengekspor data ke Excel");
     }
   };
   const items = [
@@ -146,7 +146,7 @@ const absenAdmin: React.FC = () => {
         );
 
         if (!absenResponse.ok) {
-          Alert.alert("Error", "Failed to fetch attendance");
+          Alert.alert("Error", "Gagal mengambil data absensi");
           return;
         }
 
@@ -178,7 +178,7 @@ const absenAdmin: React.FC = () => {
 
         setTableData(formattedAbsenData); // Set formattedAbsenData to state
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error mengambil data:", error);
       }
     });
 
@@ -195,7 +195,7 @@ const absenAdmin: React.FC = () => {
             router.replace("/index");
           }
         } catch (error) {
-          console.error("Failed to get auth token:", error);
+          console.error("Gagal mendapatkan token otentikasi:", error);
         }
       });
 
@@ -420,7 +420,7 @@ const absenAdmin: React.FC = () => {
               onPress={exportToExcel} // Set onPress to exportToExcel function
             >
               <Text className="text-xs text-center text-white">
-                Export To Excel
+                Ekspor ke Excel
               </Text>
             </TouchableOpacity>
           </View>
@@ -450,7 +450,7 @@ const absenAdmin: React.FC = () => {
             onPress={closeImageModal}
             style={{ position: "absolute", top: 20, right: 20 }}
           >
-            <Text style={{ color: "white", fontSize: 20 }}>Close</Text>
+            <Text style={{ color: "white", fontSize: 20 }}>Tutup</Text>
           </TouchableOpacity>
         </View>
       </Modal>

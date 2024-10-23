@@ -155,7 +155,9 @@ const izinAdmin = () => {
                   {/* Approve Button */}
                   <TouchableOpacity
                     className="bg-[#228E47] p-1 rounded"
-                    onPress={() => handleApprove(row.id_izin)}
+                    onPress={() =>
+                      handleApprove(row.id_izin, row.id_akun, "Approved")
+                    }
                   >
                     <Text className="text-white text-center text-[10px]">
                       Approve
@@ -165,7 +167,9 @@ const izinAdmin = () => {
                   {/* Reject Button */}
                   <TouchableOpacity
                     className="bg-[#F23737] p-1 rounded"
-                    onPress={() => handleReject(row.id_izin)}
+                    onPress={() =>
+                      handleReject(row.id_izin, row.id_akun, "Rejected")
+                    }
                   >
                     <Text className="text-white text-center text-[10px]">
                       Reject
@@ -232,19 +236,22 @@ const izinAdmin = () => {
       });
 
       const indexedFilteredData = filtered.map((row, index) => [
-        index + 1, // New display index
-        row[1], // nama_karyawan
-        row[2], // tanggal_izin
-        row[3], // alasan
-        row[4], // tipe
-        row[5], // status
-        row[6], // Original id_izin (keep this!)
+        index + 1,
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+        row[6],
+        row[7],
         <View className="flex flex-col justify-center h-3 px-2 py-2 space-y-2">
           {row[5] === "Pending" ? (
             <>
               <TouchableOpacity
                 className="bg-[#228E47] p-1 rounded"
-                onPress={() => handleApprove(Number(row[6]))} // Convert to number
+                onPress={() =>
+                  handleApprove(Number(row[6]), Number(row[7]), "Approved")
+                }
               >
                 <Text className="text-white text-center text-[10px]">
                   Approve
@@ -252,7 +259,9 @@ const izinAdmin = () => {
               </TouchableOpacity>
               <TouchableOpacity
                 className="bg-[#F23737] p-1 rounded"
-                onPress={() => handleReject(Number(row[6]))} // Use the original id_izin
+                onPress={() =>
+                  handleReject(Number(row[6]), Number(row[7]), "Rejected")
+                }
               >
                 <Text className="text-white text-center text-[10px]">
                   Reject
@@ -281,71 +290,68 @@ const izinAdmin = () => {
     filterData();
   }, [selectedDate1, selectedDate2, value, tableIzinData]);
 
-  const handleApprove = (id_izin: number) =>
+  const handleApprove = (id_izin: number, id_akun: number, value: string) =>
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
+      const today = new Date().toISOString().split("T")[0];
+      Alert.alert("Approve Izin", "Approve this request?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Approve",
+          onPress: async () => {
+            const response = await fetch(
+              `https://queenfoodbackend-production.up.railway.app/accept-status/`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json", // Specify content type
+                },
+                body: JSON.stringify({ id_izin, id_akun, value, today }), // Send id_izin in the body
+              }
+            );
 
-      if (!token) {
-        Alert.alert("Error", "Authorization token not found");
-        return;
-      }
+            if (!response.ok) {
+              Alert.alert("Error", "Failed to approve izin");
+              return;
+            }
 
-      console.log("Approving izin with ID:", id_izin); // Debug id_izin
-
-      try {
-        const response = await fetch(
-          `https://queenfoodbackend-production.up.railway.app/accept-status/`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ id_izin }), // Ensure id_izin is correctly passed
-          }
-        );
-
-        const responseData = await response.json(); // Parse the response
-
-        if (!response.ok) {
-          console.log("Error response data:", responseData);
-          Alert.alert(
-            "Error",
-            responseData.message || "Failed to approve izin"
-          );
-          return;
-        }
-
-        console.log("Approval successful:", responseData);
-        fetchData(); // Refresh the table data
-      } catch (error) {
-        console.error("Failed to approve izin:", error);
-        Alert.alert("Error", "An error occurred while approving izin");
-      }
+            fetchData();
+          },
+        },
+      ]);
     });
 
-  const handleReject = (id_izin: number) =>
+  const handleReject = (id_izin: number, id_akun: number, value: string) =>
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
-
-      const response = await fetch(
-        `https://queenfoodbackend-production.up.railway.app/reject-status/`,
+      const today = new Date().toISOString().split("T")[0];
+      Alert.alert("Reject Request", "Reject this request?", [
+        { text: "Cancel", style: "cancel" },
         {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json", // Specify content type
+          text: "Reject",
+          onPress: async () => {
+            const response = await fetch(
+              `https://queenfoodbackend-production.up.railway.app/reject-status/`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json", // Specify content type
+                },
+                body: JSON.stringify({ id_izin, id_akun, today, value }), // Send id_izin in the body
+              }
+            );
+
+            if (!response.ok) {
+              Alert.alert("Error", "Failed to reject izin");
+              return;
+            }
+
+            fetchData();
           },
-          body: JSON.stringify({ id_izin }), // Send id_izin in the body
-        }
-      );
-
-      if (!response.ok) {
-        Alert.alert("Error", "Failed to reject izin");
-        return;
-      }
-
-      fetchData();
+        },
+      ]);
     });
   const toggleSidenav = () => {
     setSidenavVisible(!isSidenavVisible);

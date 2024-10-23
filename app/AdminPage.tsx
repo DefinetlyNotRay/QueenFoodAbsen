@@ -1,17 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  Alert,
-  Platform,
-} from "react-native";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { View, StyleSheet, Text, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
+
 import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 import { BlurView } from "expo-blur";
@@ -25,6 +17,8 @@ import SidenavAdmin from "../components/SidenavAdmin";
 import * as FileSystem from "expo-file-system";
 import * as XLSX from "xlsx";
 import * as Sharing from "expo-sharing";
+import Constants from "expo-constants";
+
 const AdminPage: React.FC = () => {
   const router = useRouter();
 
@@ -47,17 +41,16 @@ const AdminPage: React.FC = () => {
   const [date, setDate] = useState(new Date());
   const [selectedDate1, setSelectedDate1] = useState<string | null>(null);
   const [selectedDate2, setSelectedDate2] = useState<string | null>(null);
-  const [expoPushToken, setExpoPushToken] = useState("");
 
   const [tableData, setTableData] = useState([["-", "-", "-", "-", "-"]]);
   const [tableIzinData, setIzinTableData] = useState([["-", "-", "-", "-"]]);
 
   const tableHead = [
     "No",
-    "Account",
+    "Nama Sales",
     "Tanggal",
-    "Absen Time",
-    "Pulang Time",
+    "Masuk",
+    "Pulang",
     "Detail",
   ]; // Ensure you have a matching table head
   const izinTableHead = ["No", "Nama", "Alasan", "Action"]; // Ensure you have a matching table head
@@ -88,7 +81,7 @@ const AdminPage: React.FC = () => {
       }
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      Alert.alert("Error", "Failed to export data to Excel");
+      Alert.alert("Error", "Gagal mengekspor data ke Excel");
     }
   };
   const items = [
@@ -105,7 +98,7 @@ const AdminPage: React.FC = () => {
       await func();
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert("Error", "Terjadi kesalahan yang tidak terduga.");
     } finally {
       setIsLoading(false);
     }
@@ -116,109 +109,7 @@ const AdminPage: React.FC = () => {
     const year = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
     return `${day}/${month}/${year}`;
   };
-  useEffect(() => {
-    const getNotificationPermissions = async () => {
-      // Get the current notification permissions
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
 
-      // If the permission is not granted, request it
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      // If still not granted, show an alert
-      if (finalStatus !== "granted") {
-        Alert.alert(
-          "Permission required",
-          "You need to grant permission to receive notifications"
-        );
-      }
-    };
-
-    getNotificationPermissions();
-  }, []);
-  useEffect(() => {
-    const registerForPushNotificationsAsync = async () => {
-      if (Device.isDevice) {
-        const { status: existingStatus } =
-          await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-
-        if (existingStatus !== "granted") {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-
-        if (finalStatus !== "granted") {
-          alert("You need to grant permission to receive notifications");
-          return;
-        }
-
-        const token = (await Notifications.getExpoPushTokenAsync()).data;
-        setExpoPushToken(token);
-        console.log("Expo Push Token:", token);
-
-        // Save the token to your backend
-        await saveTokenToBackend(token);
-      } else {
-        alert("Must use a physical device for push notifications");
-      }
-
-      if (Platform.OS === "android") {
-        Notifications.setNotificationChannelAsync("default", {
-          name: "default",
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#FF231F7C",
-        });
-      }
-    };
-
-    registerForPushNotificationsAsync();
-  }, []);
-  const saveTokenToBackend = async (token: string) => {
-    const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
-    const response = await fetch(
-      `https://queenfoodbackend-production.up.railway.app/expo-push-token`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Include the user's auth token if needed
-        },
-        body: JSON.stringify({ userId, expoPushToken: token }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error("Failed to save push token:", response.status);
-      alert("Failed to save push token. Please try again.");
-    } else {
-      console.log("Push token saved successfully.");
-    }
-  };
-
-  console.log("Expo Push Token:", expoPushToken);
-  useEffect(() => {
-    const notificationListener = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log("Notification received:", notification);
-      }
-    );
-
-    const responseListener =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("Notification response:", response);
-      });
-
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
-  }, []);
   const parseDate = (dateStr: string) => {
     const [day, month, year] = dateStr.split("/").map(Number);
     return new Date(Number(`20${year}`), month - 1, day);
@@ -240,7 +131,7 @@ const AdminPage: React.FC = () => {
         );
 
         if (!izinResponse.ok) {
-          Alert.alert("Error", "Failed to fetch izin");
+          Alert.alert("Error", "Gagal mengambil data izin");
           return;
         }
 
@@ -278,7 +169,7 @@ const AdminPage: React.FC = () => {
         );
 
         if (!absenResponse.ok) {
-          Alert.alert("Error", "Failed to fetch attendance");
+          Alert.alert("Error", "Gagal mengambil data absensi");
           return;
         }
 
@@ -320,10 +211,10 @@ const AdminPage: React.FC = () => {
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
       const today = new Date().toISOString().split("T")[0];
-      Alert.alert("Approve Izin", "Approve this request?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("Setujui Izin", "Setujui permintaan ini?", [
+        { text: "Batal", style: "cancel" },
         {
-          text: "Approve",
+          text: "Setuju",
           onPress: async () => {
             const response = await fetch(
               `https://queenfoodbackend-production.up.railway.app/accept-status/`,
@@ -338,11 +229,12 @@ const AdminPage: React.FC = () => {
             );
 
             if (!response.ok) {
-              Alert.alert("Error", "Failed to approve izin");
+              Alert.alert("Error", "Gagal menyetujui izin");
               return;
             }
 
             fetchData();
+            Alert.alert("Success", "Permintaan telah diterima");
           },
         },
       ]);
@@ -352,10 +244,10 @@ const AdminPage: React.FC = () => {
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
       const today = new Date().toISOString().split("T")[0];
-      Alert.alert("Reject Request", "Reject this request?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("Tolak Permintaan", "Tolak permintaan ini?", [
+        { text: "Batal", style: "cancel" },
         {
-          text: "Reject",
+          text: "Tolak",
           onPress: async () => {
             const response = await fetch(
               `https://queenfoodbackend-production.up.railway.app/reject-status/`,
@@ -370,11 +262,12 @@ const AdminPage: React.FC = () => {
             );
 
             if (!response.ok) {
-              Alert.alert("Error", "Failed to reject izin");
+              Alert.alert("Error", "Gagal menolak izin");
               return;
             }
 
             fetchData();
+            Alert.alert("Success", "Permintaan telah ditolak");
           },
         },
       ]);
@@ -411,7 +304,7 @@ const AdminPage: React.FC = () => {
         );
 
         if (!response.ok) {
-          Alert.alert("Error", "Failed to fetch statistics");
+          Alert.alert("Error", "Gagal mengambil statistik");
           return;
         }
 

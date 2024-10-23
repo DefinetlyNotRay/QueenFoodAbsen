@@ -84,17 +84,17 @@ const SidenavAdmin: React.FC<SidenavProps> = ({ isVisible, onClose }) => {
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} className="mt-4">
             <Link href="/createSales" className="text-base">
-              Create Sales
+              Sales
             </Link>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} className="mt-4">
             <Link href="/izinAdmin" className="text-base">
-              Izin List
+              Izin Sales
             </Link>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} className="mt-4">
             <Link href="/absenAdmin" className="text-base">
-              Absen List
+              Absen Sales
             </Link>
           </TouchableOpacity>
         </View>

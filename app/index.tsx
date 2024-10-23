@@ -46,14 +46,12 @@ const Login = () => {
         await AsyncStorage.setItem("authToken", response.data.token);
         await AsyncStorage.setItem("userId", response.data.userId.toString());
 
-        // Check if level is defined before storing it
         if (response.data.level) {
           await AsyncStorage.setItem("level", response.data.level);
         } else {
-          console.warn("Level is undefined or null");
+          console.warn("Level tidak terdefinisi atau null");
         }
 
-        // Retrieve the level after setting it
         const level = await AsyncStorage.getItem("level");
         console.log(level);
 
@@ -63,13 +61,13 @@ const Login = () => {
           router.push("/HomePage");
         }
 
-        Alert.alert("Login Success", response.data.message);
+        Alert.alert("Login Berhasil", response.data.message);
       } else {
-        Alert.alert("Login Failed", response.data.message);
+        Alert.alert("Login Gagal", response.data.message);
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "An error occurred while logging in");
+      Alert.alert("Error", "Terjadi kesalahan saat login");
     }
   };
 

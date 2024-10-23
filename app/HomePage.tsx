@@ -8,7 +8,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
-import * as Notifications from "expo-notifications";
+
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,8 +19,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
 import * as Location from "expo-location";
-import * as Device from "expo-device";
-import { Platform } from "react-native";
+
 import SpinnerOverlay from "../components/SpinnerOverlayProps";
 
 interface DecodedToken {
@@ -85,7 +84,6 @@ const HomePage: React.FC = () => {
   const [pulangTime, setPulangTime] = useState("");
   const [locationDisplay, setLocationDisplay] = useState("");
   const router = useRouter();
-  const [expoPushToken, setExpoPushToken] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // Start with current month
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // Start with current year
   const [attendanceCounts, setAttendanceCounts] = useState({
@@ -112,7 +110,7 @@ const HomePage: React.FC = () => {
       await func();
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert("Error", "Terjadi kesalahan yang tidak terduga.");
     } finally {
       setIsLoading(false);
     }
@@ -124,109 +122,6 @@ const HomePage: React.FC = () => {
     checkIzin();
     checkIzinApproveOrReject();
     getTime();
-  }, []);
-  useEffect(() => {
-    const getNotificationPermissions = async () => {
-      // Get the current notification permissions
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      // If the permission is not granted, request it
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      // If still not granted, show an alert
-      if (finalStatus !== "granted") {
-        Alert.alert(
-          "Permission required",
-          "You need to grant permission to receive notifications"
-        );
-      }
-    };
-
-    getNotificationPermissions();
-  }, []);
-  useEffect(() => {
-    const registerForPushNotificationsAsync = async () => {
-      if (Device.isDevice) {
-        const { status: existingStatus } =
-          await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-
-        if (existingStatus !== "granted") {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-
-        if (finalStatus !== "granted") {
-          alert("You need to grant permission to receive notifications");
-          return;
-        }
-
-        const token = (await Notifications.getExpoPushTokenAsync()).data;
-        setExpoPushToken(token);
-        console.log("Expo Push Token:", token);
-
-        // Save the token to your backend
-        await saveTokenToBackend(token);
-      } else {
-        alert("Must use a physical device for push notifications");
-      }
-
-      if (Platform.OS === "android") {
-        Notifications.setNotificationChannelAsync("default", {
-          name: "default",
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#FF231F7C",
-        });
-      }
-    };
-
-    registerForPushNotificationsAsync();
-  }, []);
-  const saveTokenToBackend = async (token: string) => {
-    const userId = await AsyncStorage.getItem("userId"); // Assuming you have userId stored in AsyncStorage
-    const response = await fetch(
-      `https://queenfoodbackend-production.up.railway.app/expo-push-token`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Include the user's auth token if needed
-        },
-        body: JSON.stringify({ userId, expoPushToken: token }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error("Failed to save push token:", response.status);
-      alert("Failed to save push token. Please try again.");
-    } else {
-      console.log("Push token saved successfully.");
-    }
-  };
-
-  console.log("Expo Push Token:", expoPushToken);
-  useEffect(() => {
-    const notificationListener = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log("Notification received:", notification);
-      }
-    );
-
-    const responseListener =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log("Notification response:", response);
-      });
-
-    return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
-      Notifications.removeNotificationSubscription(responseListener);
-    };
   }, []);
 
   useEffect(() => {
@@ -480,10 +375,7 @@ const HomePage: React.FC = () => {
     withLoading(async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "Location Error",
-          "Permission to access location was denied"
-        );
+        Alert.alert("Kesalahan Lokasi", "Izin untuk mengakses lokasi ditolak");
         return;
       }
       let currentLocation = await Location.getCurrentPositionAsync({});
@@ -491,7 +383,7 @@ const HomePage: React.FC = () => {
       setTimeout(() => {
         setLoactionModal(false);
         setEtelaseModal(true);
-        Alert.alert("Location Sucessfully Retrieved");
+        Alert.alert("Lokasi Berhasil Diambil");
       }, 1000);
     });
 
@@ -553,7 +445,7 @@ const HomePage: React.FC = () => {
         setImageUrl(imageUrl);
       } catch (error) {
         console.error("Failed to upload image:", error);
-        Alert.alert("Error", "Failed to upload image.");
+        Alert.alert("Error", "Gagal mengunggah gambar.");
       }
     });
 
@@ -586,7 +478,7 @@ const HomePage: React.FC = () => {
   const createAbsen = (etalaseUrl: string) =>
     withLoading(async () => {
       if (isLoading) {
-        Alert.alert("Loading", "Please wait until all data is loaded.");
+        Alert.alert("Memuat", "Mohon tunggu hingga semua data dimuat.");
         return;
       }
       try {
@@ -598,7 +490,7 @@ const HomePage: React.FC = () => {
         if (!imageUrl || !etalaseUrl || !location) {
           Alert.alert(
             "Error",
-            "Please capture the images and retrieve location."
+            "Mohon ambil gambar dan dapatkan lokasi terlebih dahulu."
           );
           return;
         }
@@ -623,7 +515,7 @@ const HomePage: React.FC = () => {
         );
 
         if (response.status === 200) {
-          Alert.alert("Success", "Absen created successfully.");
+          Alert.alert("Berhasil", "Absen berhasil dibuat.");
           const today = new Date().toISOString().split("T")[0];
 
           setMarkedDates((prevDates) => ({
@@ -643,7 +535,7 @@ const HomePage: React.FC = () => {
         }
       } catch (error) {
         console.error("Error creating absen:", error);
-        Alert.alert("Error", "Failed to create absen.");
+        Alert.alert("Error", "Gagal membuat absen.");
       }
     });
 
@@ -658,7 +550,7 @@ const HomePage: React.FC = () => {
         createAbsen(imageUrl);
       } catch (error) {
         console.error("Failed to upload etalase image:", error);
-        Alert.alert("Error", "Failed to upload etalase image.");
+        Alert.alert("Error", "Gagal mengunggah gambar etalase.");
       }
     });
 
@@ -692,12 +584,14 @@ const HomePage: React.FC = () => {
       setEtelaseModal(false);
       return response.data.secure_url;
     } catch (error: any) {
-      // Add ': any' here
       console.error(
         "Error uploading image:",
         error.response?.data || error.message
       );
-      Alert.alert("Upload Error", "Failed to upload image. Please try again.");
+      Alert.alert(
+        "Kesalahan Unggah",
+        "Gagal mengunggah gambar. Silakan coba lagi."
+      );
       throw error;
     }
   };
@@ -728,7 +622,7 @@ const HomePage: React.FC = () => {
       setTimeout(() => {
         setAbsenModalVisible(false);
         setLoactionModal(true);
-        Alert.alert("Success", "Image Successfully Uploaded.");
+        Alert.alert("Berhasil", "Gambar Berhasil Diunggah.");
       }, 1000);
       return response.data.secure_url;
     } catch (error) {
@@ -763,10 +657,7 @@ const HomePage: React.FC = () => {
         }
 
         if (!alasanInput) {
-          Alert.alert(
-            "Error",
-            "Please fill in all fields and select an image."
-          );
+          Alert.alert("Error", "Mohon isi semua kolom dan pilih gambar.");
           return;
         }
 
@@ -796,13 +687,13 @@ const HomePage: React.FC = () => {
         setIzingModalVisible(false);
 
         console.log("Form submission successful. Showing alert.");
-        Alert.alert("Success", "Form submitted successfully.");
+        Alert.alert("Berhasil", "Formulir berhasil dikirim.");
       } catch (error: any) {
         console.error(
           "Error submitting form:",
           error.response ? error.response.data : error.message
         );
-        Alert.alert("Error", "Failed to submit form.");
+        Alert.alert("Error", "Gagal mengirim formulir.");
       }
     });
 
@@ -817,9 +708,9 @@ const HomePage: React.FC = () => {
           throw new Error("User ID not found in AsyncStorage");
         }
 
-        Alert.alert("Confirm", "Are you sure?", [
+        Alert.alert("Konfirmasi", "Apakah Anda yakin?", [
           {
-            text: "Cancel",
+            text: "Batal",
             style: "cancel",
           },
           {
@@ -833,18 +724,18 @@ const HomePage: React.FC = () => {
 
                 if (response.status === 200) {
                   console.log("Absen Pulang Response:", response.data);
-                  Alert.alert("Success", response.data.message);
+                  Alert.alert("Berhasil", response.data.message);
                   checkHome();
                   getTime();
                 } else {
-                  Alert.alert("Error", "Unexpected response from the server.");
+                  Alert.alert("Error", "Respon tidak terduga dari server.");
                 }
               } catch (error) {
                 console.error("Error during absen pulang:", error);
                 Alert.alert(
                   "Error",
                   (error as any).response?.data?.message ||
-                    "Failed to mark attendance."
+                    "Gagal menandai kehadiran."
                 );
               } finally {
                 setIsLoading(false);
@@ -854,7 +745,7 @@ const HomePage: React.FC = () => {
         ]);
       } catch (error) {
         console.error("Error during absen pulang:", error);
-        Alert.alert("Error", "Failed to mark attendance.");
+        Alert.alert("Error", "Gagal menandai kehadiran.");
       }
     });
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];

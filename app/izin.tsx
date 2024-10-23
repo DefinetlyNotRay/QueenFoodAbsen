@@ -27,7 +27,7 @@ const izin = () => {
       await func();
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert("Error", "Terjadi kesalahan yang tidak terduga.");
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +61,7 @@ const izin = () => {
         const token = await AsyncStorage.getItem("authToken");
         const userId = await AsyncStorage.getItem("userId");
         if (!userId) {
-          throw new Error("User ID not found in AsyncStorage");
+          throw new Error("ID Pengguna tidak ditemukan di AsyncStorage");
         }
         // Fetch Izin Data
         const izinResponse = await fetch(
@@ -72,7 +72,7 @@ const izin = () => {
         );
 
         if (!izinResponse.ok) {
-          Alert.alert("Error", "Failed to fetch izin");
+          Alert.alert("Error", "Gagal mengambil data izin");
           return;
         }
 
@@ -87,7 +87,7 @@ const izin = () => {
 
         setIzinTableData(formattedIzinData);
       } catch (error) {
-        console.error("Failed to fetch data:", error);
+        console.error("Gagal mengambil data:", error);
       }
     });
 

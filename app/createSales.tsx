@@ -37,7 +37,7 @@ const createSales = () => {
       await func();
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert("Error", "Terjadi kesalahan yang tidak terduga.");
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +92,7 @@ const createSales = () => {
         if (!izinResponse.ok) {
           const errorResponse = await izinResponse.json();
           console.error("Error response:", errorResponse);
-          Alert.alert("Error", "Failed to fetch data");
+          Alert.alert("Error", "Gagal mengambil data");
           return;
         }
 
@@ -148,10 +148,10 @@ const createSales = () => {
                 setEditModalVisible(true);
                 setTambahModalVisible(false);
               } else {
-                Alert.alert("Error", "Userid not found.");
+                Alert.alert("Error", "ID pengguna tidak ditemukan.");
               }
             } catch (error) {
-              Alert.alert("Error", "Failed to fetch sales data.");
+              Alert.alert("Error", "Gagal mengambil data sales.");
               console.error("Error:", error);
             }
           },
@@ -175,13 +175,13 @@ const createSales = () => {
               );
 
               if (response.status === 200) {
-                Alert.alert("Success", "Sales deleted successfully.");
+                Alert.alert("Berhasil", "Sales berhasil dihapus.");
                 fetchData();
               } else {
-                Alert.alert("Error", "Sales deletion failed.");
+                Alert.alert("Error", "Gagal menghapus sales.");
               }
             } catch (error) {
-              Alert.alert("Error", "Failed to fetch sales data.");
+              Alert.alert("Error", "Gagal mengambil data sales.");
               console.error("Error:", error);
             }
           },
@@ -221,7 +221,7 @@ const createSales = () => {
             );
 
             if (response.status === 200) {
-              Alert.alert("Success", "Sales Edited successfully.");
+              Alert.alert("Berhasil", "Sales berhasil diubah.");
               setNamaSales("");
               setUsername("");
               setPassword("");
@@ -229,7 +229,7 @@ const createSales = () => {
               fetchData();
               setEditModalVisible(false);
             } else {
-              Alert.alert("Error", "Sales Editing failed.");
+              Alert.alert("Error", "Gagal mengubah sales.");
             }
           },
         },
@@ -260,14 +260,14 @@ const createSales = () => {
             );
 
             if (response.status === 200) {
-              Alert.alert("Success", "Sales created successfully.");
+              Alert.alert("Berhasil", "Sales berhasil dibuat.");
               setNamaSales("");
               setUsername("");
               setPassword("");
               fetchData();
               setTambahModalVisible(false);
             } else {
-              Alert.alert("Error", "Sales creatiion failed.");
+              Alert.alert("Error", "Gagal membuat sales.");
             }
           },
         },
