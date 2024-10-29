@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, StyleSheet, Text, TouchableOpacity, Alert } from "react-native";
+import { View, StyleSheet, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +21,27 @@ import Constants from "expo-constants";
 
 const AdminPage: React.FC = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const level = await AsyncStorage.getItem("level");
+        if (!token) {
+          router.replace("/index");
+        } else if (level !== "admin") {
+          router.replace("/HomePage");
+        }
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        router.replace("/index");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    checkAuth();
+  }, []);
   const [stats, setStats] = useState({
     totalEmployees: 0,
     attendedToday: 0,
@@ -91,7 +111,6 @@ const AdminPage: React.FC = () => {
     { label: "Izin", value: "Izin" },
     { label: "Alpa", value: "Alpa" },
   ];
-  const [isLoading, setIsLoading] = useState(false);
   const withLoading = async (func: () => Promise<void>) => {
     setIsLoading(true);
     try {
@@ -274,25 +293,6 @@ const AdminPage: React.FC = () => {
     });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = await AsyncStorage.getItem("authToken");
-        const level = await AsyncStorage.getItem("level");
-        if (level === "user") {
-          router.replace("/HomePage");
-        }
-        if (!token) {
-          router.replace("/index");
-        }
-      } catch (error) {
-        console.error("Failed to get auth token:", error);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
     const getStats = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
@@ -391,6 +391,14 @@ const AdminPage: React.FC = () => {
 
     filterData();
   }, [selectedDate1, selectedDate2, value, tableData]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1 }}>

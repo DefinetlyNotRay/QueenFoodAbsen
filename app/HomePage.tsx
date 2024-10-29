@@ -7,6 +7,7 @@ import {
   Modal,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 
 import { useRouter } from "expo-router";
@@ -56,6 +57,28 @@ type MarkedDates = {
 
 const HomePage: React.FC = () => {
   // State variables
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const level = await AsyncStorage.getItem("level");
+        if (!token) {
+          router.replace("/index");
+        } else if (level === "admin") {
+          router.replace("/AdminPage");
+        }
+      } catch (error) {
+        console.error("Failed to get auth token:", error);
+        router.replace("/index");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
   const [selectedImageAbsen, setSelectedImageAbsen] = useState<string | null>(
     null
   );
@@ -76,14 +99,12 @@ const HomePage: React.FC = () => {
   const [hasAttendedToday, setHasAttendedToday] = useState(false);
   const [hasGoneHome, setHasGoneHome] = useState(false);
   const [isGoneHomeDisabled, setIsGoneHomeDisabled] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
 
   const [markedDates, setMarkedDates] = useState({});
   const [isSidenavVisible, setSidenavVisible] = useState(false);
   const [absenTime, setAbsenTime] = useState("");
   const [pulangTime, setPulangTime] = useState("");
   const [locationDisplay, setLocationDisplay] = useState("");
-  const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // Start with current month
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // Start with current year
   const [attendanceCounts, setAttendanceCounts] = useState({
@@ -92,6 +113,7 @@ const HomePage: React.FC = () => {
     sakit: 0,
     alpha: 0,
   });
+
   // Constants
   const statusColors: StatusColor = {
     Hadir: "#159847",
@@ -173,25 +195,6 @@ const HomePage: React.FC = () => {
       }
     } catch (error) {}
   };
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = await AsyncStorage.getItem("authToken");
-        const level = await AsyncStorage.getItem("level");
-        if (level === "admin") {
-          router.replace("/AdminPage");
-        }
-        if (!token) {
-          router.replace("/index");
-        }
-      } catch (error) {
-        console.error("Failed to get auth token:", error);
-      }
-    };
-
-    checkAuth();
-  }, []);
 
   useEffect(() => {
     const fetchAttendanceData = async () => {
@@ -810,6 +813,13 @@ const HomePage: React.FC = () => {
     setAttendanceCounts(initialAttendanceCounts);
   }, [markedDates]); // This effect runs when markedDates is loaded
   console.log(markedDates);
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
   return (
     <View style={{ flex: 1 }}>
       <SpinnerOverlay visible={isLoading} />

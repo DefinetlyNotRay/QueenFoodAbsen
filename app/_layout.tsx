@@ -98,7 +98,6 @@ const _layout = () => {
         setNotification(notification);
         console.log("Notification received:", notification);
       });
-
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         console.log("Notification response:", response);

@@ -1,37 +1,48 @@
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
-import React from "react";
-import { useState, useEffect } from "react";
 import axios from "axios";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NGROK_API } from "@env";
 import { Image } from "expo-image";
+
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
+        const level = await AsyncStorage.getItem("level");
+
         if (token) {
-          // Redirect to login if the token is missing
-          router.replace("/HomePage");
+          if (level === "admin") {
+            router.replace("/AdminPage");
+          } else {
+            router.replace("/HomePage");
+          }
         }
       } catch (error) {
-        console.error("Login First");
+        console.error("Error checking auth:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
   }, []);
+
   const handleLogin = async () => {
     try {
       const response = await axios.post(
@@ -70,6 +81,14 @@ const Login = () => {
       Alert.alert("Error", "Terjadi kesalahan saat login");
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex justify-center flex-col px-10 h-[100vh]">
@@ -127,6 +146,7 @@ const Login = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   formContainer: {
     shadowColor: "#000",
@@ -136,4 +156,5 @@ const styles = StyleSheet.create({
     elevation: 20, // For Android shadow
   },
 });
+
 export default Login;
