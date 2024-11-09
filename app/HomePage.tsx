@@ -386,7 +386,7 @@ const HomePage: React.FC = () => {
       setTimeout(() => {
         setLoactionModal(false);
         setEtelaseModal(true);
-        Alert.alert("Lokasi Berhasil Diambil");
+        Alert.alert("Berhasil", "Lokasi Anda berhasil disimpan");
       }, 1000);
     });
 
@@ -688,7 +688,10 @@ const HomePage: React.FC = () => {
         setAlesanInput("");
         setValue("");
         setIzingModalVisible(false);
-
+        checkAttendance();
+        checkHome();
+        checkIzin();
+        checkIzinApproveOrReject();
         console.log("Form submission successful. Showing alert.");
         Alert.alert("Berhasil", "Formulir berhasil dikirim.");
       } catch (error: any) {
@@ -890,13 +893,15 @@ const HomePage: React.FC = () => {
                   <Text style={styles.closeButtonText}>X</Text>
                 </TouchableOpacity>
 
-                <Text>Take a Selfie Right Now</Text>
+                <Text className="text-xs font-bold">
+                  Sebelum Absen Tolong Foto Diri Anda Saat Ini
+                </Text>
 
                 <TouchableOpacity
                   style={styles.uploadButton}
                   onPress={takePhoto}
                 >
-                  <Text style={styles.textStyle}>Take Photo</Text>
+                  <Text style={styles.textStyle}>Take a Photo</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -909,7 +914,9 @@ const HomePage: React.FC = () => {
           >
             <View style={styles.modalBackground}>
               <View style={styles.modalView}>
-                <Text>Send Your Current Location</Text>
+                <Text className="text-xs font-bold">
+                  Tolong Kirim Lokasi Anda Saat Ini
+                </Text>
                 <TouchableOpacity
                   style={styles.uploadButton}
                   onPress={getLocationData}
@@ -927,12 +934,14 @@ const HomePage: React.FC = () => {
           >
             <View style={styles.modalBackground}>
               <View style={styles.modalView}>
-                <Text>Send Display Photo</Text>
+                <Text className="text-xs font-bold">
+                  Tolong Kirim Etalase Anda Saat Ini
+                </Text>
                 <TouchableOpacity
                   style={styles.uploadButton}
                   onPress={takeEtalase}
                 >
-                  <Text style={styles.textStyle}>Send Display Photo</Text>
+                  <Text style={styles.textStyle}>Take a Photo</Text>
                 </TouchableOpacity>
               </View>
             </View>

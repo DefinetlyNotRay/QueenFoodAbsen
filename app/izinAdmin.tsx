@@ -36,7 +36,7 @@ const izinAdmin = () => {
       await func();
     } catch (error) {
       console.error("Error:", error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert("Error", "Terjadi kesalahan yang tidak terduga.");
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +123,7 @@ const izinAdmin = () => {
         const token = await AsyncStorage.getItem("authToken");
         const userId = await AsyncStorage.getItem("userId");
         if (!userId) {
-          throw new Error("User ID not found in AsyncStorage");
+          throw new Error("ID Pengguna tidak ditemukan di AsyncStorage");
         }
         // Fetch Izin Data
         const izinResponse = await fetch(
@@ -134,7 +134,7 @@ const izinAdmin = () => {
         );
 
         if (!izinResponse.ok) {
-          Alert.alert("Error", "Failed to fetch izin");
+          Alert.alert("Error", "Gagal mengambil data izin");
           return;
         }
 
@@ -196,7 +196,7 @@ const izinAdmin = () => {
 
         setIzinTableData(formattedIzinData);
       } catch (error) {
-        console.error("Failed to fetch data:", error);
+        console.error("Gagal mengambil data:", error);
       }
     });
   const formatDate = (date: Date): string => {
@@ -294,10 +294,10 @@ const izinAdmin = () => {
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
       const today = new Date().toISOString().split("T")[0];
-      Alert.alert("Approve Izin", "Approve this request?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("Setujui Izin", "Setujui permintaan ini?", [
+        { text: "Batal", style: "cancel" },
         {
-          text: "Approve",
+          text: "Setuju",
           onPress: async () => {
             const response = await fetch(
               `https://queenfoodbackend-production.up.railway.app/accept-status/`,
@@ -312,7 +312,7 @@ const izinAdmin = () => {
             );
 
             if (!response.ok) {
-              Alert.alert("Error", "Failed to approve izin");
+              Alert.alert("Error", "Gagal menyetujui izin");
               return;
             }
 
@@ -326,10 +326,10 @@ const izinAdmin = () => {
     withLoading(async () => {
       const token = await AsyncStorage.getItem("authToken");
       const today = new Date().toISOString().split("T")[0];
-      Alert.alert("Reject Request", "Reject this request?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("Tolak Permintaan", "Tolak permintaan ini?", [
+        { text: "Batal", style: "cancel" },
         {
-          text: "Reject",
+          text: "Tolak",
           onPress: async () => {
             const response = await fetch(
               `https://queenfoodbackend-production.up.railway.app/reject-status/`,
@@ -344,7 +344,7 @@ const izinAdmin = () => {
             );
 
             if (!response.ok) {
-              Alert.alert("Error", "Failed to reject izin");
+              Alert.alert("Error", "Gagal menolak izin");
               return;
             }
 

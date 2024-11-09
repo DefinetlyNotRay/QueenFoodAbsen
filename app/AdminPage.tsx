@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, StyleSheet, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -109,7 +116,7 @@ const AdminPage: React.FC = () => {
     { label: "Hadir", value: "Hadir" },
     { label: "Sakit", value: "Sakit" },
     { label: "Izin", value: "Izin" },
-    { label: "Alpa", value: "Alpa" },
+    { label: "Alpha", value: "Alpha" },
   ];
   const withLoading = async (func: () => Promise<void>) => {
     setIsLoading(true);
@@ -394,7 +401,7 @@ const AdminPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );

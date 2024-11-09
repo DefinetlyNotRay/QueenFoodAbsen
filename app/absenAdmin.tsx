@@ -115,7 +115,7 @@ const absenAdmin: React.FC = () => {
     { label: "Hadir", value: "Hadir" },
     { label: "Sakit", value: "Sakit" },
     { label: "Izin", value: "Izin" },
-    { label: "Alpa", value: "Alpa" },
+    { label: "Alpha", value: "Alpha" },
   ];
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, "0");

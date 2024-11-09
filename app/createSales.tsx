@@ -105,7 +105,7 @@ const createSales = () => {
           row.level,
           <View className="flex flex-col justify-center px-2 py-2 space-y-2">
             <TouchableOpacity
-              className="bg-[#228E47] p-1 rounded"
+              className="bg-[#fcc203] p-1 rounded"
               onPress={() => handleEdit(row.id_akun)}
             >
               <Text className="text-white text-center text-[10px]">Edit</Text>

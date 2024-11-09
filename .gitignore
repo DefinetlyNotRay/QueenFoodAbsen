@@ -34,6 +34,3 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-.env
-google-services.json
-queenfoodabsen-firebase-adminsdk-mnjrr-c8e917a884.json
