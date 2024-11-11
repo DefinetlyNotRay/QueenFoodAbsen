@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -26,6 +27,49 @@ import * as FileSystem from "expo-file-system";
 import * as XLSX from "xlsx";
 import * as Sharing from "expo-sharing";
 import Constants from "expo-constants";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+// Notification handler setup
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
+// Register for push notifications
+async function registerForPushNotificationsAsync() {
+  if (Device.isDevice) {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+      alert("Failed to get push token for push notification!");
+      return;
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    return tokenData.data; // Return the push token
+  } else {
+    alert("Must use physical device for push notifications");
+  }
+
+  if (Platform.OS === "android") {
+    Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+  }
+}
 
 const AdminPage: React.FC = () => {
   const router = useRouter();
@@ -72,6 +116,71 @@ const AdminPage: React.FC = () => {
 
   const [tableData, setTableData] = useState([["-", "-", "-", "-", "-"]]);
   const [tableIzinData, setIzinTableData] = useState([["-", "-", "-", "-"]]);
+
+  const [expoPushToken, setExpoPushToken] = useState("");
+  const [notification, setNotification] = useState<
+    Notifications.Notification | undefined
+  >(undefined);
+  const notificationListener = useRef<Notifications.Subscription>();
+  const responseListener = useRef<Notifications.Subscription>();
+
+  useEffect(() => {
+    // Register push notifications and store the token
+    const registerForPushNotifications = async () => {
+      const userId = await AsyncStorage.getItem("userId");
+      const token = await registerForPushNotificationsAsync();
+      setExpoPushToken(token ?? "");
+      if (token) {
+        try {
+          const response = await fetch(
+            "https://queenfoodbackend-production.up.railway.app/storePushToken",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId: userId,
+                expoPushToken: token,
+              }),
+            }
+          );
+          const responseText = await response.text();
+          console.log("Full response:", responseText);
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Failed to store push token:", errorData);
+          }
+        } catch (error) {
+          console.error("Error sending push token to backend:", error);
+        }
+      }
+    };
+
+    registerForPushNotifications();
+
+    // Add listeners for notifications
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        setNotification(notification);
+        console.log("Notification received:", notification);
+      });
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("Notification response:", response);
+      });
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, []);
 
   const tableHead = [
     "No",

@@ -63,7 +63,6 @@ const _layout = () => {
       const userId = await AsyncStorage.getItem("userId");
       const token = await registerForPushNotificationsAsync();
       setExpoPushToken(token ?? "");
-
       if (token) {
         try {
           const response = await fetch(
@@ -79,7 +78,8 @@ const _layout = () => {
               }),
             }
           );
-
+          const responseText = await response.text();
+          console.log("Full response:", responseText);
           if (!response.ok) {
             const errorData = await response.json();
             console.error("Failed to store push token:", errorData);
