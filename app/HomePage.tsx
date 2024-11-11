@@ -36,11 +36,12 @@ interface DecodedToken {
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
   }),
 });
 
+// Register for push notifications
 // Register for push notifications
 async function registerForPushNotificationsAsync() {
   if (Device.isDevice) {
@@ -180,8 +181,11 @@ const HomePage: React.FC = () => {
               }),
             }
           );
-          const responseText = await response.text();
-          console.log("Full response:", responseText);
+          // Read response once based on status
+          const responseData = response.ok
+            ? await response.text() // For success, you may want to parse text if it's plain text
+            : await response.json(); // For errors, parse as JSON for better error handling
+
           if (!response.ok) {
             const errorData = await response.json();
             console.error("Failed to store push token:", errorData);

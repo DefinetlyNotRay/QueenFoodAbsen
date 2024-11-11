@@ -33,8 +33,8 @@ import * as Device from "expo-device";
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
   }),
 });
 
@@ -146,7 +146,8 @@ const AdminPage: React.FC = () => {
             }
           );
           const responseText = await response.text();
-          console.log("Full response:", responseText);
+          console.log("Status:", response.status);
+          console.log("Response Text:", await response.text());
           if (!response.ok) {
             const errorData = await response.json();
             console.error("Failed to store push token:", errorData);
