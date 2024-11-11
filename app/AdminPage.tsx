@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  ScrollView,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -17,7 +19,6 @@ import { BlurView } from "expo-blur";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
 import { Table, Row, Rows } from "react-native-table-component";
-import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { NGROK_API } from "@env";
 import SidenavAdmin from "../components/SidenavAdmin";
@@ -86,6 +87,17 @@ const AdminPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string | null>(null);
   const [isFocus, setIsFocus] = useState(false);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(); // Initial data fetch
+
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
   // Function to export to Excel
   const exportToExcel = async () => {
     try {
@@ -408,141 +420,152 @@ const AdminPage: React.FC = () => {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <SpinnerOverlay visible={isLoading} />
+    <ScrollView
+      contentContainerStyle={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={{ flex: 1 }}>
+        <SpinnerOverlay visible={isLoading} />
 
-      <Header onToggleSidenav={toggleSidenav} />
+        <Header onToggleSidenav={toggleSidenav} />
 
-      {isSidenavVisible && (
-        <TouchableOpacity
-          style={styles.blurContainer}
-          activeOpacity={1}
-          onPress={closeSidenav}
-        >
-          <BlurView intensity={50} style={StyleSheet.absoluteFill}>
-            <View style={styles.overlay} />
-          </BlurView>
-        </TouchableOpacity>
-      )}
+        {isSidenavVisible && (
+          <TouchableOpacity
+            style={styles.blurContainer}
+            activeOpacity={1}
+            onPress={closeSidenav}
+          >
+            <BlurView intensity={50} style={StyleSheet.absoluteFill}>
+              <View style={styles.overlay} />
+            </BlurView>
+          </TouchableOpacity>
+        )}
 
-      <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
+        <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
 
-      <View className="p-4">
-        <View>
-          <View className="flex flex-row justify-center flex-grow gap-5 mb-3">
-            <View className="bg-[#D9D9D9] rounded p-2 w-[45%]">
-              <Text>Total Karyawan Absen</Text>
-              <Text className="text-2xl">{stats.attendedToday}</Text>
+        <View className="p-4">
+          <View>
+            <View className="flex flex-row justify-center flex-grow gap-5 mb-3">
+              <View className="bg-[#D9D9D9] rounded p-2 w-[45%]">
+                <Text>Total Karyawan Absen</Text>
+                <Text className="text-2xl">{stats.attendedToday}</Text>
+              </View>
+              <View className="bg-[#D9D9D9] rounded p-2 w-[45%]">
+                <Text>Total Karyawan Izin</Text>
+                <Text className="text-2xl">{stats.izinToday}</Text>
+              </View>
             </View>
-            <View className="bg-[#D9D9D9] rounded p-2 w-[45%]">
-              <Text>Total Karyawan Izin</Text>
-              <Text className="text-2xl">{stats.izinToday}</Text>
+            <View className="bg-[#D9D9D9] rounded p-2 w-[100%]">
+              <Text>Total Karyawan</Text>
+              <Text className="text-2xl">{stats.totalEmployees}</Text>
             </View>
           </View>
-          <View className="bg-[#D9D9D9] rounded p-2 w-[100%]">
-            <Text>Total Karyawan</Text>
-            <Text className="text-2xl">{stats.totalEmployees}</Text>
-          </View>
-        </View>
 
-        <View className="mt-4">
-          <Text className="mb-2 text-xl font-bold">Absen</Text>
-          <View className="flex flex-row gap-4">
+          <View className="mt-4">
+            <Text className="mb-2 text-xl font-bold">Absen</Text>
+            <View className="flex flex-row gap-4">
+              <View>
+                <Text className="mb-2">Tanggal-1:</Text>
+                <TouchableOpacity
+                  className="px-2 py-1 pr-5 border rounded"
+                  onPress={() => showDatePicker(true)}
+                >
+                  <Text className="text-xs">
+                    {selectedDate1 ? selectedDate1 : "Select Date"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View>
+                <Text className="mb-2">Tanggal-2:</Text>
+                <TouchableOpacity
+                  className="px-2 py-1 pr-5 border rounded"
+                  onPress={() => showDatePicker(false)}
+                >
+                  <Text className="text-xs">
+                    {selectedDate2 ? selectedDate2 : "Select Date"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View className="justify-center flex-1">
+                <Text className="mb-2">Type:</Text>
+                <Dropdown
+                  style={{
+                    height: 30,
+                    borderColor: "gray",
+                    borderWidth: 1,
+                    borderRadius: 5,
+                    paddingHorizontal: 8,
+                  }}
+                  placeholderStyle={{
+                    fontSize: 12,
+                    color: "gray",
+                  }}
+                  selectedTextStyle={{
+                    fontSize: 12,
+                  }}
+                  containerStyle={{
+                    backgroundColor: "white",
+                    borderRadius: 5,
+                  }}
+                  data={items}
+                  maxHeight={200}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={!isFocus ? "Select an option..." : "..."}
+                  value={value}
+                  onFocus={() => setIsFocus(true)}
+                  onBlur={() => setIsFocus(false)}
+                  onChange={(item) => {
+                    setValue(item.value);
+                    setIsFocus(false);
+                  }}
+                />
+              </View>
+            </View>
             <View>
-              <Text className="mb-2">Tanggal-1:</Text>
+              <ScrollView style={{ maxHeight: 160 }}>
+                <Table borderStyle={styles.border}>
+                  <Row data={tableHead} textStyle={styles.text} />
+                  {filteredData.length > 0 ? (
+                    <Rows data={filteredData} textStyle={styles.text} />
+                  ) : (
+                    <Row data={["No data yet"]} textStyle={styles.text} />
+                  )}
+                </Table>
+              </ScrollView>
               <TouchableOpacity
-                className="px-2 py-1 pr-5 border rounded"
-                onPress={() => showDatePicker(true)}
+                style={styles.exportButton}
+                className="w-[30%] rounded-md ml-64 mt-2 px-2 py-2"
+                onPress={exportToExcel} // Set onPress to exportToExcel function
               >
-                <Text className="text-xs">
-                  {selectedDate1 ? selectedDate1 : "Select Date"}
+                <Text className="text-xs text-center text-white">
+                  Export To Excel
                 </Text>
               </TouchableOpacity>
             </View>
+            <Text className="mt-2 mb-2 text-xl font-semibold">Izin</Text>
             <View>
-              <Text className="mb-2">Tanggal-2:</Text>
-              <TouchableOpacity
-                className="px-2 py-1 pr-5 border rounded"
-                onPress={() => showDatePicker(false)}
-              >
-                <Text className="text-xs">
-                  {selectedDate2 ? selectedDate2 : "Select Date"}
-                </Text>
-              </TouchableOpacity>
+              <ScrollView style={{ maxHeight: 280 }}>
+                <Table borderStyle={styles.border}>
+                  <Row data={izinTableHead} textStyle={styles.text} />
+                  {tableIzinData.length > 0 ? (
+                    <Rows data={tableIzinData} textStyle={styles.text} />
+                  ) : (
+                    <Row data={["No data yet"]} textStyle={styles.text} />
+                  )}
+                </Table>
+              </ScrollView>
             </View>
-            <View className="justify-center flex-1">
-              <Text className="mb-2">Type:</Text>
-              <Dropdown
-                style={{
-                  height: 30,
-                  borderColor: "gray",
-                  borderWidth: 1,
-                  borderRadius: 5,
-                  paddingHorizontal: 8,
-                }}
-                placeholderStyle={{
-                  fontSize: 12,
-                  color: "gray",
-                }}
-                selectedTextStyle={{
-                  fontSize: 12,
-                }}
-                containerStyle={{
-                  backgroundColor: "white",
-                  borderRadius: 5,
-                }}
-                data={items}
-                maxHeight={200}
-                labelField="label"
-                valueField="value"
-                placeholder={!isFocus ? "Select an option..." : "..."}
-                value={value}
-                onFocus={() => setIsFocus(true)}
-                onBlur={() => setIsFocus(false)}
-                onChange={(item) => {
-                  setValue(item.value);
-                  setIsFocus(false);
-                }}
-              />
-            </View>
-          </View>
-          <View>
-            <ScrollView style={{ maxHeight: 160 }}>
-              <Table borderStyle={styles.border}>
-                <Row data={tableHead} textStyle={styles.text} />
-                {filteredData.length > 0 ? (
-                  <Rows data={filteredData} textStyle={styles.text} />
-                ) : (
-                  <Row data={["No data yet"]} textStyle={styles.text} />
-                )}
-              </Table>
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.exportButton}
-              className="w-[30%] rounded-md ml-64 mt-2 px-2 py-2"
-              onPress={exportToExcel} // Set onPress to exportToExcel function
-            >
-              <Text className="text-xs text-center text-white">
-                Export To Excel
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <Text className="mt-2 mb-2 text-xl font-semibold">Izin</Text>
-          <View>
-            <ScrollView style={{ maxHeight: 280 }}>
-              <Table borderStyle={styles.border}>
-                <Row data={izinTableHead} textStyle={styles.text} />
-                {tableIzinData.length > 0 ? (
-                  <Rows data={tableIzinData} textStyle={styles.text} />
-                ) : (
-                  <Row data={["No data yet"]} textStyle={styles.text} />
-                )}
-              </Table>
-            </ScrollView>
           </View>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 

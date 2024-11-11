@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -23,6 +24,7 @@ const izin = () => {
   const [tableIzinData, setIzinTableData] = useState([["-", "-", "-", "-"]]);
   const izinTableHead = ["No", "Tanggal", "Alasan", "Tipe", "Status"];
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const withLoading = async (func: () => Promise<void>) => {
     setIsLoading(true);
     try {
@@ -34,6 +36,14 @@ const izin = () => {
       setIsLoading(false);
     }
   };
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(); // Initial data fetch
+
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
   // Define the column widths for each column
   const widthArr = [40, 100, 150, 80, 100];
 
@@ -187,120 +197,131 @@ const izin = () => {
   }, [selectedDate1, selectedDate2, value, tableIzinData]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <SpinnerOverlay visible={isLoading} />
+    <ScrollView
+      contentContainerStyle={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={{ flex: 1 }}>
+        <SpinnerOverlay visible={isLoading} />
 
-      <Header onToggleSidenav={toggleSidenav} />
+        <Header onToggleSidenav={toggleSidenav} />
 
-      {isSidenavVisible && (
-        <TouchableOpacity
-          style={styles.blurContainer}
-          activeOpacity={1}
-          onPress={closeSidenav}
-        >
-          <BlurView intensity={50} style={StyleSheet.absoluteFill}>
-            <View style={styles.overlay} />
-          </BlurView>
-        </TouchableOpacity>
-      )}
+        {isSidenavVisible && (
+          <TouchableOpacity
+            style={styles.blurContainer}
+            activeOpacity={1}
+            onPress={closeSidenav}
+          >
+            <BlurView intensity={50} style={StyleSheet.absoluteFill}>
+              <View style={styles.overlay} />
+            </BlurView>
+          </TouchableOpacity>
+        )}
 
-      <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
+        <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
 
-      <View className="flex-1 p-4">
-        <Text className="mt-2 mb-2 ml-[0.2rem] text-xl font-semibold">
-          Izin
-        </Text>
+        <View className="flex-1 p-4">
+          <Text className="mt-2 mb-2 ml-[0.2rem] text-xl font-semibold">
+            Izin
+          </Text>
 
-        <View className="flex flex-row gap-4">
-          <View>
-            <Text className="mb-2">Tanggal-1:</Text>
-            <TouchableOpacity
-              className="px-2 py-1 pr-5 border rounded"
-              onPress={() => showDatePicker(true)}
-            >
-              <Text className="text-xs">
-                {selectedDate1 ? selectedDate1 : "Select Date"}
-              </Text>
-            </TouchableOpacity>
+          <View className="flex flex-row gap-4">
+            <View>
+              <Text className="mb-2">Tanggal-1:</Text>
+              <TouchableOpacity
+                className="px-2 py-1 pr-5 border rounded"
+                onPress={() => showDatePicker(true)}
+              >
+                <Text className="text-xs">
+                  {selectedDate1 ? selectedDate1 : "Select Date"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View>
+              <Text className="mb-2">Tanggal-2:</Text>
+              <TouchableOpacity
+                className="px-2 py-1 pr-5 border rounded"
+                onPress={() => showDatePicker(false)}
+              >
+                <Text className="text-xs">
+                  {selectedDate2 ? selectedDate2 : "Select Date"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View className="justify-center flex-1">
+              <Text className="mb-2">Type:</Text>
+              <Dropdown
+                style={{
+                  height: 30,
+                  borderColor: "gray",
+                  borderWidth: 1,
+                  borderRadius: 5,
+                  paddingHorizontal: 8,
+                }}
+                placeholderStyle={{
+                  fontSize: 12,
+                  color: "gray",
+                }}
+                selectedTextStyle={{
+                  fontSize: 12,
+                }}
+                containerStyle={{
+                  backgroundColor: "white",
+                  borderRadius: 5,
+                }}
+                data={items}
+                maxHeight={200}
+                labelField="label"
+                valueField="value"
+                placeholder={!isFocus ? "Select an option..." : "..."}
+                value={value}
+                onFocus={() => setIsFocus(true)}
+                onBlur={() => setIsFocus(false)}
+                onChange={(item) => {
+                  setValue(item.value);
+                  setIsFocus(false);
+                }}
+              />
+            </View>
           </View>
-          <View>
-            <Text className="mb-2">Tanggal-2:</Text>
-            <TouchableOpacity
-              className="px-2 py-1 pr-5 border rounded"
-              onPress={() => showDatePicker(false)}
-            >
-              <Text className="text-xs">
-                {selectedDate2 ? selectedDate2 : "Select Date"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View className="justify-center flex-1">
-            <Text className="mb-2">Type:</Text>
-            <Dropdown
-              style={{
-                height: 30,
-                borderColor: "gray",
-                borderWidth: 1,
-                borderRadius: 5,
-                paddingHorizontal: 8,
-              }}
-              placeholderStyle={{
-                fontSize: 12,
-                color: "gray",
-              }}
-              selectedTextStyle={{
-                fontSize: 12,
-              }}
-              containerStyle={{
-                backgroundColor: "white",
-                borderRadius: 5,
-              }}
-              data={items}
-              maxHeight={200}
-              labelField="label"
-              valueField="value"
-              placeholder={!isFocus ? "Select an option..." : "..."}
-              value={value}
-              onFocus={() => setIsFocus(true)}
-              onBlur={() => setIsFocus(false)}
-              onChange={(item) => {
-                setValue(item.value);
-                setIsFocus(false);
-              }}
-            />
-          </View>
-        </View>
 
-        <ScrollView horizontal={true} style={{ maxHeight: 700 }}>
-          <View>
-            <ScrollView style={styles.tableContainer}>
-              <Table borderStyle={styles.tableBorder}>
-                <Row
-                  data={izinTableHead}
-                  widthArr={widthArr}
-                  style={styles.tableHeader}
-                  textStyle={styles.headerText}
-                />
-                {filteredData.length > 0 ? (
-                  <Rows
-                    data={filteredData}
-                    widthArr={widthArr}
-                    textStyle={styles.tableText}
-                    style={styles.tableRow}
-                  />
-                ) : (
+          <ScrollView horizontal={true} style={{ maxHeight: 700 }}>
+            <View>
+              <ScrollView style={styles.tableContainer}>
+                <Table borderStyle={styles.tableBorder}>
                   <Row
-                    data={["No data available"]}
-                    style={styles.noDataRow}
-                    textStyle={styles.noDataText}
+                    data={izinTableHead}
+                    widthArr={widthArr}
+                    style={styles.tableHeader}
+                    textStyle={styles.headerText}
                   />
-                )}
-              </Table>
-            </ScrollView>
-          </View>
-        </ScrollView>
+                  {filteredData.length > 0 ? (
+                    <Rows
+                      data={filteredData}
+                      widthArr={widthArr}
+                      textStyle={styles.tableText}
+                      style={styles.tableRow}
+                    />
+                  ) : (
+                    <Row
+                      data={["No data available"]}
+                      style={styles.noDataRow}
+                      textStyle={styles.noDataText}
+                    />
+                  )}
+                </Table>
+              </ScrollView>
+            </View>
+          </ScrollView>
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 

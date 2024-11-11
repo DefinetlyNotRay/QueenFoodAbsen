@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -31,6 +32,16 @@ const createSales = () => {
   const [editModal, setEditModalVisible] = useState(false);
   const [editUserId, setEditUserId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(); // Initial data fetch
+
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
   const withLoading = async (func: () => Promise<void>) => {
     setIsLoading(true);
     try {
@@ -274,185 +285,196 @@ const createSales = () => {
       ]);
     });
   return (
-    <View style={{ flex: 1 }}>
-      <SpinnerOverlay visible={isLoading} />
+    <ScrollView
+      contentContainerStyle={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={{ flex: 1 }}>
+        <SpinnerOverlay visible={isLoading} />
 
-      <Header onToggleSidenav={toggleSidenav} />
+        <Header onToggleSidenav={toggleSidenav} />
 
-      {isSidenavVisible && (
-        <TouchableOpacity
-          style={styles.blurContainer}
-          activeOpacity={1}
-          onPress={closeSidenav}
-        >
-          <BlurView intensity={50} style={StyleSheet.absoluteFill}>
-            <View style={styles.overlay} />
-          </BlurView>
-        </TouchableOpacity>
-      )}
-
-      <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
-
-      <View className="flex-1 min-h-screen p-4">
-        <Text className="mt-2 mb-2 ml-[0.2rem] text-xl font-semibold">
-          User
-        </Text>
-        <View>
+        {isSidenavVisible && (
           <TouchableOpacity
-            className="bg-[#159847] p-2 mb-1 rounded"
-            onPress={() => setTambahModalVisible(true)}
+            style={styles.blurContainer}
+            activeOpacity={1}
+            onPress={closeSidenav}
           >
-            <Text className="text-white text-center text-[10px]">Tambah</Text>
+            <BlurView intensity={50} style={StyleSheet.absoluteFill}>
+              <View style={styles.overlay} />
+            </BlurView>
           </TouchableOpacity>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={tambahModal}
-            onRequestClose={() => setTambahModalVisible(!tambahModal)}
-          >
-            <View style={styles.modalBackground}>
-              <View style={styles.modalView}>
-                <View>
-                  <Text className="font-extrabold">Nama Sales</Text>
-                  <TextInput
-                    editable
-                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
-                    maxLength={40}
-                    onChangeText={(namaSales) => setNamaSales(namaSales)}
-                    value={namaSales}
-                  />
-                </View>
-                <View className="mt-2">
-                  <Text className="font-extrabold">Username</Text>
-                  <TextInput
-                    editable
-                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
-                    maxLength={40}
-                    onChangeText={(username) => setUsername(username)}
-                    value={username}
-                  />
-                </View>
-                <View className="mt-2">
-                  <Text className="font-extrabold">Password</Text>
-                  <TextInput
-                    editable
-                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
-                    maxLength={40}
-                    onChangeText={(password) => setPassword(password)}
-                    secureTextEntry
-                    value={password}
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={handleAddUser}
-                  className="bg-[#159847] w-[75vw] mt-2 py-2 px-2"
-                >
-                  <Text className="text-sm font-bold text-center text-white">
-                    Submit
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setTambahModalVisible(!tambahModal)}
-                >
-                  <Text style={styles.closeButtonText}>X</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={editModal}
-            onRequestClose={() => setEditModalVisible(!editModal)}
-          >
-            <View style={styles.modalBackground}>
-              <View style={styles.modalView}>
-                <View>
-                  <Text className="font-extrabold">Nama Sales</Text>
-                  <TextInput
-                    editable
-                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
-                    maxLength={40}
-                    onChangeText={(namaSales) => setNamaSales(namaSales)}
-                    value={namaSales}
-                  />
-                </View>
-                <View className="mt-2">
-                  <Text className="font-extrabold">Username</Text>
-                  <TextInput
-                    editable
-                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
-                    maxLength={40}
-                    onChangeText={(username) => setUsername(username)}
-                    value={username}
-                  />
-                </View>
-                <View className="mt-2">
-                  <Text className="font-extrabold">Password</Text>
-                  <TextInput
-                    editable
-                    className="border-[0.5px] w-[75vw] border-gray-300 px-2"
-                    maxLength={40}
-                    onChangeText={(password) => setPassword(password)}
-                    secureTextEntry
-                    value={password}
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={handleEditUser}
-                  className="bg-[#159847] w-[75vw] mt-2 py-2 px-2"
-                >
-                  <Text className="text-sm font-bold text-center text-white">
-                    Submit
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setEditModalVisible(!editModal)}
-                >
-                  <Text style={styles.closeButtonText}>X</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        </View>
+        )}
 
-        <View className="flex flex-row gap-4">
-          {/* Wrap table in horizontal ScrollView for horizontal scroll */}
-          <ScrollView horizontal={true}>
-            <View>
-              <ScrollView style={styles.tableContainer}>
-                <Table borderStyle={styles.tableBorder}>
-                  {/* Set column widths with widthArr */}
-                  <Row
-                    data={izinTableHead}
-                    widthArr={widthArr}
-                    style={styles.tableHeader}
-                    textStyle={styles.headerText}
-                  />
-                  {userTable.length > 0 ? (
-                    <Rows
-                      data={userTable}
-                      widthArr={widthArr}
-                      textStyle={styles.tableText}
-                      style={styles.tableRow}
+        <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
+
+        <View className="flex-1 min-h-screen p-4">
+          <Text className="mt-2 mb-2 ml-[0.2rem] text-xl font-semibold">
+            User
+          </Text>
+          <View>
+            <TouchableOpacity
+              className="bg-[#159847] p-2 mb-1 rounded"
+              onPress={() => setTambahModalVisible(true)}
+            >
+              <Text className="text-white text-center text-[10px]">Tambah</Text>
+            </TouchableOpacity>
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={tambahModal}
+              onRequestClose={() => setTambahModalVisible(!tambahModal)}
+            >
+              <View style={styles.modalBackground}>
+                <View style={styles.modalView}>
+                  <View>
+                    <Text className="font-extrabold">Nama Sales</Text>
+                    <TextInput
+                      editable
+                      className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                      maxLength={40}
+                      onChangeText={(namaSales) => setNamaSales(namaSales)}
+                      value={namaSales}
                     />
-                  ) : (
+                  </View>
+                  <View className="mt-2">
+                    <Text className="font-extrabold">Username</Text>
+                    <TextInput
+                      editable
+                      className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                      maxLength={40}
+                      onChangeText={(username) => setUsername(username)}
+                      value={username}
+                    />
+                  </View>
+                  <View className="mt-2">
+                    <Text className="font-extrabold">Password</Text>
+                    <TextInput
+                      editable
+                      className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                      maxLength={40}
+                      onChangeText={(password) => setPassword(password)}
+                      secureTextEntry
+                      value={password}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleAddUser}
+                    className="bg-[#159847] w-[75vw] mt-2 py-2 px-2"
+                  >
+                    <Text className="text-sm font-bold text-center text-white">
+                      Submit
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setTambahModalVisible(!tambahModal)}
+                  >
+                    <Text style={styles.closeButtonText}>X</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={editModal}
+              onRequestClose={() => setEditModalVisible(!editModal)}
+            >
+              <View style={styles.modalBackground}>
+                <View style={styles.modalView}>
+                  <View>
+                    <Text className="font-extrabold">Nama Sales</Text>
+                    <TextInput
+                      editable
+                      className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                      maxLength={40}
+                      onChangeText={(namaSales) => setNamaSales(namaSales)}
+                      value={namaSales}
+                    />
+                  </View>
+                  <View className="mt-2">
+                    <Text className="font-extrabold">Username</Text>
+                    <TextInput
+                      editable
+                      className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                      maxLength={40}
+                      onChangeText={(username) => setUsername(username)}
+                      value={username}
+                    />
+                  </View>
+                  <View className="mt-2">
+                    <Text className="font-extrabold">Password</Text>
+                    <TextInput
+                      editable
+                      className="border-[0.5px] w-[75vw] border-gray-300 px-2"
+                      maxLength={40}
+                      onChangeText={(password) => setPassword(password)}
+                      secureTextEntry
+                      value={password}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleEditUser}
+                    className="bg-[#159847] w-[75vw] mt-2 py-2 px-2"
+                  >
+                    <Text className="text-sm font-bold text-center text-white">
+                      Submit
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setEditModalVisible(!editModal)}
+                  >
+                    <Text style={styles.closeButtonText}>X</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </View>
+
+          <View className="flex flex-row gap-4">
+            {/* Wrap table in horizontal ScrollView for horizontal scroll */}
+            <ScrollView horizontal={true}>
+              <View>
+                <ScrollView style={styles.tableContainer}>
+                  <Table borderStyle={styles.tableBorder}>
+                    {/* Set column widths with widthArr */}
                     <Row
-                      data={["No data yet"]}
+                      data={izinTableHead}
                       widthArr={widthArr}
-                      style={styles.noDataRow}
-                      textStyle={styles.noDataText}
+                      style={styles.tableHeader}
+                      textStyle={styles.headerText}
                     />
-                  )}
-                </Table>
-              </ScrollView>
-            </View>
-          </ScrollView>
+                    {userTable.length > 0 ? (
+                      <Rows
+                        data={userTable}
+                        widthArr={widthArr}
+                        textStyle={styles.tableText}
+                        style={styles.tableRow}
+                      />
+                    ) : (
+                      <Row
+                        data={["No data yet"]}
+                        widthArr={widthArr}
+                        style={styles.noDataRow}
+                        textStyle={styles.noDataText}
+                      />
+                    )}
+                  </Table>
+                </ScrollView>
+              </View>
+            </ScrollView>
+          </View>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 

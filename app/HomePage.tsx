@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -8,6 +8,8 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  ScrollView,
+  RefreshControl,
 } from "react-native";
 
 import { useRouter } from "expo-router";
@@ -113,7 +115,20 @@ const HomePage: React.FC = () => {
     sakit: 0,
     alpha: 0,
   });
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    checkAttendance();
+    checkHome();
+    checkIzin();
+    checkIzinApproveOrReject();
+    getTime();
+    fetchAttendanceData();
 
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
   // Constants
   const statusColors: StatusColor = {
     Hadir: "#159847",
@@ -197,70 +212,65 @@ const HomePage: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchAttendanceData = async () => {
-      try {
-        const userId = await AsyncStorage.getItem("userId");
-        if (!userId) {
-          throw new Error("User ID not found in AsyncStorage");
-        }
+    fetchAttendanceData();
+  }, []);
+  const fetchAttendanceData = async () => {
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found in AsyncStorage");
+      }
 
-        const response = await axios.get(
-          `https://queenfoodbackend-production.up.railway.app/attendance/${userId}`
-        );
-        const attendanceData = response.data;
+      const response = await axios.get(
+        `https://queenfoodbackend-production.up.railway.app/attendance/${userId}`
+      );
+      const attendanceData = response.data;
 
-        // Get today's date and start date (September 1st)
-        const today = new Date();
-        const startDate = new Date("2024-10-17");
+      // Get today's date and start date (September 1st)
+      const today = new Date();
+      const startDate = new Date("2024-10-17");
 
-        // Initialize dates object with Alpha status for every day from startDate until today
-        const dates: DatesObject = {};
-        let currentDate = new Date(startDate);
+      // Initialize dates object with Alpha status for every day from startDate until today
+      const dates: DatesObject = {};
+      let currentDate = new Date(startDate);
 
-        while (currentDate <= today) {
-          const dateString = currentDate.toISOString().split("T")[0];
-          dates[dateString] = {
+      while (currentDate <= today) {
+        const dateString = currentDate.toISOString().split("T")[0];
+        dates[dateString] = {
+          selected: true,
+          selectedColor: statusColors["Alpha"],
+          dotColor: "red",
+          selectedTextColor: "white",
+        };
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // Update dates object based on attendance data
+      attendanceData.forEach((item: any) => {
+        const { absen_time, detail } = item;
+        const date = absen_time.split("T")[0];
+
+        console.log(`Detail: ${detail}, Color: ${statusColors[detail]}`);
+
+        if (statusColors[detail]) {
+          dates[date] = {
             selected: true,
-            selectedColor: statusColors["Alpha"],
+            selectedColor: statusColors[detail],
             dotColor: "red",
             selectedTextColor: "white",
           };
-          currentDate.setDate(currentDate.getDate() + 1);
         }
+      });
 
-        // Update dates object based on attendance data
-        attendanceData.forEach((item: any) => {
-          const { absen_time, detail } = item;
-          const date = absen_time.split("T")[0];
+      console.log("Marked Dates:", dates);
 
-          console.log(`Detail: ${detail}, Color: ${statusColors[detail]}`);
-
-          if (statusColors[detail]) {
-            dates[date] = {
-              selected: true,
-              selectedColor: statusColors[detail],
-              dotColor: "red",
-              selectedTextColor: "white",
-            };
-          }
-        });
-
-        console.log("Marked Dates:", dates);
-
-        // Set marked dates
-        setMarkedDates(dates);
-      } catch (error) {
-        console.error("Error fetching attendance data:", error);
-        Alert.alert(
-          "Error",
-          "An error occurred while fetching attendance data"
-        );
-      }
-    };
-
-    fetchAttendanceData();
-  }, []);
-
+      // Set marked dates
+      setMarkedDates(dates);
+    } catch (error) {
+      console.error("Error fetching attendance data:", error);
+      Alert.alert("Error", "An error occurred while fetching attendance data");
+    }
+  };
   // Helper functions
   /**
    * Checks if the user has already attended today
@@ -824,316 +834,327 @@ const HomePage: React.FC = () => {
     );
   }
   return (
-    <View style={{ flex: 1 }}>
-      <SpinnerOverlay visible={isLoading} />
+    <ScrollView
+      contentContainerStyle={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={{ flex: 1 }}>
+        <SpinnerOverlay visible={isLoading} />
 
-      <Header onToggleSidenav={toggleSidenav} />
+        <Header onToggleSidenav={toggleSidenav} />
 
-      {isSidenavVisible && (
-        <TouchableOpacity
-          style={styles.blurContainer}
-          activeOpacity={1}
-          onPress={closeSidenav}
-        >
-          <BlurView intensity={50} style={StyleSheet.absoluteFill}>
-            <View style={styles.overlay} />
-          </BlurView>
-        </TouchableOpacity>
-      )}
+        {isSidenavVisible && (
+          <TouchableOpacity
+            style={styles.blurContainer}
+            activeOpacity={1}
+            onPress={closeSidenav}
+          >
+            <BlurView intensity={50} style={StyleSheet.absoluteFill}>
+              <View style={styles.overlay} />
+            </BlurView>
+          </TouchableOpacity>
+        )}
 
-      <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
+        <Sidenav isVisible={isSidenavVisible} onClose={closeSidenav} />
 
-      <View className="flex gap-2 p-5">
-        <Text className="mb-2 text-xl font-extrabold">Absen Sales</Text>
-        <View className="bg-[#990F66] flex p-5 rounded-md w-full shadow-lg">
-          <View>
-            <Text className="text-xl font-bold text-white ">
-              {days[currentDay]}
-            </Text>
+        <View className="flex gap-2 p-5">
+          <Text className="mb-2 text-xl font-extrabold">Absen Sales</Text>
+          <View className="bg-[#990F66] flex p-5 rounded-md w-full shadow-lg">
+            <View>
+              <Text className="text-xl font-bold text-white ">
+                {days[currentDay]}
+              </Text>
+            </View>
+            <View>
+              <Text className="font-bold text-white">
+                Lokasi: {locationDisplay}
+              </Text>
+              <Text className="font-bold text-white">
+                Absen Masuk: {absenTime}
+              </Text>
+              <Text className="font-bold text-white">
+                Absen Pulang: {pulangTime}
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text className="font-bold text-white">
-              Lokasi: {locationDisplay}
-            </Text>
-            <Text className="font-bold text-white">
-              Absen Masuk: {absenTime}
-            </Text>
-            <Text className="font-bold text-white">
-              Absen Pulang: {pulangTime}
-            </Text>
-          </View>
-        </View>
 
-        <View className="flex flex-row flex-wrap justify-center gap-4">
-          <TouchableOpacity
-            className={`w-[160px] rounded-md py-3 px-1 ${
-              hasAttendedToday || hasIzinToday
-                ? "bg-[#159847] opacity-50"
-                : "bg-[#159847]"
-            }`}
-            onPress={() => setAbsenModalVisible(true)}
-            disabled={hasAttendedToday || hasIzinToday} // Disable button if the user has attended today
-          >
-            <Text className="font-bold text-center text-white">
-              Absen Masuk
-            </Text>
-          </TouchableOpacity>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={absenModal}
-            onRequestClose={() => setAbsenModalVisible(!absenModal)}
-          >
-            <View style={styles.modalBackground}>
-              <View style={styles.modalView}>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setAbsenModalVisible(!absenModal)}
-                >
-                  <Text style={styles.closeButtonText}>X</Text>
-                </TouchableOpacity>
+          <View className="flex flex-row flex-wrap justify-center gap-4">
+            <TouchableOpacity
+              className={`w-[160px] rounded-md py-3 px-1 ${
+                hasAttendedToday || hasIzinToday
+                  ? "bg-[#159847] opacity-50"
+                  : "bg-[#159847]"
+              }`}
+              onPress={() => setAbsenModalVisible(true)}
+              disabled={hasAttendedToday || hasIzinToday} // Disable button if the user has attended today
+            >
+              <Text className="font-bold text-center text-white">
+                Absen Masuk
+              </Text>
+            </TouchableOpacity>
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={absenModal}
+              onRequestClose={() => setAbsenModalVisible(!absenModal)}
+            >
+              <View style={styles.modalBackground}>
+                <View style={styles.modalView}>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setAbsenModalVisible(!absenModal)}
+                  >
+                    <Text style={styles.closeButtonText}>X</Text>
+                  </TouchableOpacity>
 
-                <Text className="text-xs font-bold">
-                  Sebelum Absen Tolong Foto Diri Anda Saat Ini
-                </Text>
+                  <Text className="text-xs font-bold">
+                    Sebelum Absen Tolong Foto Diri Anda Saat Ini
+                  </Text>
 
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={takePhoto}
-                >
-                  <Text style={styles.textStyle}>Take a Photo</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={takePhoto}
+                  >
+                    <Text style={styles.textStyle}>Take a Photo</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </Modal>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={locationModal}
-            onRequestClose={() => setLoactionModal(!locationModal)}
-          >
-            <View style={styles.modalBackground}>
-              <View style={styles.modalView}>
-                <Text className="text-xs font-bold">
-                  Tolong Kirim Lokasi Anda Saat Ini
-                </Text>
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={getLocationData}
-                >
-                  <Text style={styles.textStyle}>Send Location</Text>
-                </TouchableOpacity>
+            </Modal>
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={locationModal}
+              onRequestClose={() => setLoactionModal(!locationModal)}
+            >
+              <View style={styles.modalBackground}>
+                <View style={styles.modalView}>
+                  <Text className="text-xs font-bold">
+                    Tolong Kirim Lokasi Anda Saat Ini
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={getLocationData}
+                  >
+                    <Text style={styles.textStyle}>Send Location</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </Modal>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={etelaseModal}
-            onRequestClose={() => setEtelaseModal(!etelaseModal)}
-          >
-            <View style={styles.modalBackground}>
-              <View style={styles.modalView}>
-                <Text className="text-xs font-bold">
-                  Tolong Kirim Etalase Anda Saat Ini
-                </Text>
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={takeEtalase}
-                >
-                  <Text style={styles.textStyle}>Take a Photo</Text>
-                </TouchableOpacity>
+            </Modal>
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={etelaseModal}
+              onRequestClose={() => setEtelaseModal(!etelaseModal)}
+            >
+              <View style={styles.modalBackground}>
+                <View style={styles.modalView}>
+                  <Text className="text-xs font-bold">
+                    Tolong Kirim Etalase Anda Saat Ini
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={takeEtalase}
+                  >
+                    <Text style={styles.textStyle}>Take a Photo</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </Modal>
-          <TouchableOpacity
-            className={`w-[160px] rounded-md py-3 px-1 ${
-              hasGoneHome || hasIzinToday || isGoneHomeDisabled
-                ? "bg-[#F23737] opacity-50"
-                : "bg-[#F23737]"
-            }`}
-            onPress={absenPulang}
-            disabled={hasGoneHome || hasIzinToday || isGoneHomeDisabled} // Disable button if the user has gone home today
-          >
-            <Text className="font-bold text-center text-white">
-              Absen Pulang
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`w-[160px] rounded-md py-3 px-1 ${
-              hasAttendedToday || hasIzinToday
-                ? "bg-[#00CABE] opacity-50"
-                : "bg-[#00CABE]"
-            }`}
-            onPress={() => setIzingModalVisible(true)}
-            disabled={hasAttendedToday || hasIzinToday}
-          >
-            <Text className="font-bold text-center text-white">Izin</Text>
-          </TouchableOpacity>
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={izinModal}
-            onRequestClose={() => setIzingModalVisible(!absenModal)}
-          >
-            <View className="p-3" style={styles.modalBackground}>
-              <View className="bg-white p-5 w-[100%] rounded-md">
-                <Text className="mb-5 text-xl font-bold">Izin</Text>
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={() => setIzingModalVisible(!izinModal)}
-                >
-                  <Text style={styles.closeButtonText}>X</Text>
-                </TouchableOpacity>
-                <View className="">
-                  <View className="flex flex-col gap-4">
-                    <View>
-                      <Text className="font-extrabold">Alasan</Text>
-                      <TextInput
-                        editable
-                        className="border-[0.5px] border-gray-300 px-2"
-                        maxLength={40}
-                        value={alasanInput}
-                        onChangeText={(alesanInput) =>
-                          setAlesanInput(alesanInput)
-                        }
-                      />
+            </Modal>
+            <TouchableOpacity
+              className={`w-[160px] rounded-md py-3 px-1 ${
+                hasGoneHome || hasIzinToday || isGoneHomeDisabled
+                  ? "bg-[#F23737] opacity-50"
+                  : "bg-[#F23737]"
+              }`}
+              onPress={absenPulang}
+              disabled={hasGoneHome || hasIzinToday || isGoneHomeDisabled} // Disable button if the user has gone home today
+            >
+              <Text className="font-bold text-center text-white">
+                Absen Pulang
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className={`w-[160px] rounded-md py-3 px-1 ${
+                hasAttendedToday || hasIzinToday
+                  ? "bg-[#00CABE] opacity-50"
+                  : "bg-[#00CABE]"
+              }`}
+              onPress={() => setIzingModalVisible(true)}
+              disabled={hasAttendedToday || hasIzinToday}
+            >
+              <Text className="font-bold text-center text-white">Izin</Text>
+            </TouchableOpacity>
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={izinModal}
+              onRequestClose={() => setIzingModalVisible(!absenModal)}
+            >
+              <View className="p-3" style={styles.modalBackground}>
+                <View className="bg-white p-5 w-[100%] rounded-md">
+                  <Text className="mb-5 text-xl font-bold">Izin</Text>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setIzingModalVisible(!izinModal)}
+                  >
+                    <Text style={styles.closeButtonText}>X</Text>
+                  </TouchableOpacity>
+                  <View className="">
+                    <View className="flex flex-col gap-4">
+                      <View>
+                        <Text className="font-extrabold">Alasan</Text>
+                        <TextInput
+                          editable
+                          className="border-[0.5px] border-gray-300 px-2"
+                          maxLength={40}
+                          value={alasanInput}
+                          onChangeText={(alesanInput) =>
+                            setAlesanInput(alesanInput)
+                          }
+                        />
+                      </View>
+
+                      <Text className="mb-2 font-extrabold">Type</Text>
+                      <View className="justify-center flex-1 mb-5">
+                        <Dropdown
+                          style={{
+                            height: 40,
+                            borderColor: "gray",
+                            borderWidth: 1,
+                            borderRadius: 1,
+                            paddingHorizontal: 8,
+                          }}
+                          placeholderStyle={{
+                            fontSize: 14,
+                            color: "gray",
+                          }}
+                          selectedTextStyle={{
+                            fontSize: 14,
+                          }}
+                          containerStyle={{
+                            backgroundColor: "white",
+                            borderRadius: 5,
+                          }}
+                          data={items}
+                          maxHeight={200}
+                          labelField="label"
+                          valueField="value"
+                          placeholder={!isFocus ? "Select an option..." : "..."}
+                          value={value}
+                          onFocus={() => setIsFocus(true)}
+                          onBlur={() => setIsFocus(false)}
+                          onChange={(item) => {
+                            setValue(item.value);
+                            setIsFocus(false);
+                          }}
+                        />
+                      </View>
+                      <TouchableOpacity
+                        className="bg-[#159847] py-2 px-2"
+                        onPress={submitForm}
+                      >
+                        <Text className="text-sm font-bold text-center text-white">
+                          Submit
+                        </Text>
+                      </TouchableOpacity>
                     </View>
-
-                    <Text className="mb-2 font-extrabold">Type</Text>
-                    <View className="justify-center flex-1 mb-5">
-                      <Dropdown
-                        style={{
-                          height: 40,
-                          borderColor: "gray",
-                          borderWidth: 1,
-                          borderRadius: 1,
-                          paddingHorizontal: 8,
-                        }}
-                        placeholderStyle={{
-                          fontSize: 14,
-                          color: "gray",
-                        }}
-                        selectedTextStyle={{
-                          fontSize: 14,
-                        }}
-                        containerStyle={{
-                          backgroundColor: "white",
-                          borderRadius: 5,
-                        }}
-                        data={items}
-                        maxHeight={200}
-                        labelField="label"
-                        valueField="value"
-                        placeholder={!isFocus ? "Select an option..." : "..."}
-                        value={value}
-                        onFocus={() => setIsFocus(true)}
-                        onBlur={() => setIsFocus(false)}
-                        onChange={(item) => {
-                          setValue(item.value);
-                          setIsFocus(false);
-                        }}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      className="bg-[#159847] py-2 px-2"
-                      onPress={submitForm}
-                    >
-                      <Text className="text-sm font-bold text-center text-white">
-                        Submit
-                      </Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
+            </Modal>
+          </View>
+        </View>
+
+        <View className="p-5 mx-5 mb-3 bg-white rounded-xl">
+          <Text className="text-center text-[16px] font-bold">Presensi</Text>
+          <Calendar
+            onDayPress={(day: DateData) => console.log(day)}
+            markedDates={markedDates}
+            onMonthChange={handleMonthChange} // This will trigger when the user changes months
+            theme={{
+              calendarBackground: "#ffffff",
+              textSectionTitleColor: "#b6c1cd",
+              selectedDayBackgroundColor: "#00adf5",
+              selectedDayTextColor: "#ffffff",
+              todayTextColor: "#90EE90",
+              dayTextColor: "#2d4150",
+              textDisabledColor: "#d9e1e8",
+              dotColor: "#00adf5",
+              selectedDotColor: "#ffffff",
+              arrowColor: "orange",
+              monthTextColor: "black",
+              indicatorColor: "black",
+              textDayFontFamily: "monospace",
+              textMonthFontFamily: "monospace",
+              textDayHeaderFontFamily: "monospace",
+              textDayFontWeight: "300",
+              textMonthFontWeight: "bold",
+              textDayHeaderFontWeight: "300",
+              textDayFontSize: 12,
+              textMonthFontSize: 12,
+              textDayHeaderFontSize: 12,
+            }}
+          />
+        </View>
+
+        <View className="flex flex-row items-center justify-center gap-10">
+          <View className="flex items-center justify-center">
+            <View
+              className="pt-1"
+              style={[styles.legendDot, { backgroundColor: "#159847" }]}
+            >
+              <Text className="text-sm text-center text-white">
+                {" "}
+                {attendanceCounts.hadir}
+              </Text>
             </View>
-          </Modal>
+            <Text className="text-sm text-center">Hadir</Text>
+          </View>
+
+          <View className="flex items-center justify-center">
+            <View
+              className="pt-1"
+              style={[styles.legendDot, { backgroundColor: "#00CABE" }]}
+            >
+              <Text className="text-sm text-center text-white">
+                {" "}
+                {attendanceCounts.izin}
+              </Text>
+            </View>
+            <Text className="text-sm text-center">Izin</Text>
+          </View>
+          <View className="flex items-center justify-center">
+            <View
+              className="pt-1"
+              style={[styles.legendDot, { backgroundColor: "#F2D437" }]}
+            >
+              <Text className="text-sm text-center text-white">
+                {" "}
+                {attendanceCounts.sakit}
+              </Text>
+            </View>
+            <Text className="text-sm text-center">Sakit</Text>
+          </View>
+          <View className="flex items-center justify-center">
+            <View
+              className="pt-1"
+              style={[styles.legendDot, { backgroundColor: "#6F6262" }]}
+            >
+              <Text className="text-sm text-center text-white">
+                {attendanceCounts.alpha}
+              </Text>
+            </View>
+            <Text className="text-sm text-center">Alpha</Text>
+          </View>
         </View>
       </View>
-
-      <View className="p-5 mx-5 mb-3 bg-white rounded-xl">
-        <Text className="text-center text-[16px] font-bold">Presensi</Text>
-        <Calendar
-          onDayPress={(day: DateData) => console.log(day)}
-          markedDates={markedDates}
-          onMonthChange={handleMonthChange} // This will trigger when the user changes months
-          theme={{
-            calendarBackground: "#ffffff",
-            textSectionTitleColor: "#b6c1cd",
-            selectedDayBackgroundColor: "#00adf5",
-            selectedDayTextColor: "#ffffff",
-            todayTextColor: "#90EE90",
-            dayTextColor: "#2d4150",
-            textDisabledColor: "#d9e1e8",
-            dotColor: "#00adf5",
-            selectedDotColor: "#ffffff",
-            arrowColor: "orange",
-            monthTextColor: "black",
-            indicatorColor: "black",
-            textDayFontFamily: "monospace",
-            textMonthFontFamily: "monospace",
-            textDayHeaderFontFamily: "monospace",
-            textDayFontWeight: "300",
-            textMonthFontWeight: "bold",
-            textDayHeaderFontWeight: "300",
-            textDayFontSize: 12,
-            textMonthFontSize: 12,
-            textDayHeaderFontSize: 12,
-          }}
-        />
-      </View>
-
-      <View className="flex flex-row items-center justify-center gap-10">
-        <View className="flex items-center justify-center">
-          <View
-            className="pt-1"
-            style={[styles.legendDot, { backgroundColor: "#159847" }]}
-          >
-            <Text className="text-sm text-center text-white">
-              {" "}
-              {attendanceCounts.hadir}
-            </Text>
-          </View>
-          <Text className="text-sm text-center">Hadir</Text>
-        </View>
-
-        <View className="flex items-center justify-center">
-          <View
-            className="pt-1"
-            style={[styles.legendDot, { backgroundColor: "#00CABE" }]}
-          >
-            <Text className="text-sm text-center text-white">
-              {" "}
-              {attendanceCounts.izin}
-            </Text>
-          </View>
-          <Text className="text-sm text-center">Izin</Text>
-        </View>
-        <View className="flex items-center justify-center">
-          <View
-            className="pt-1"
-            style={[styles.legendDot, { backgroundColor: "#F2D437" }]}
-          >
-            <Text className="text-sm text-center text-white">
-              {" "}
-              {attendanceCounts.sakit}
-            </Text>
-          </View>
-          <Text className="text-sm text-center">Sakit</Text>
-        </View>
-        <View className="flex items-center justify-center">
-          <View
-            className="pt-1"
-            style={[styles.legendDot, { backgroundColor: "#6F6262" }]}
-          >
-            <Text className="text-sm text-center text-white">
-              {attendanceCounts.alpha}
-            </Text>
-          </View>
-          <Text className="text-sm text-center">Alpha</Text>
-        </View>
-      </View>
-    </View>
+    </ScrollView>
   );
 };
 

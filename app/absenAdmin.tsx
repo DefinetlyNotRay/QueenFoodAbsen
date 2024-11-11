@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  RefreshControl,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -17,7 +19,6 @@ import { BlurView } from "expo-blur";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Dropdown } from "react-native-element-dropdown";
 import { Table, Row } from "react-native-table-component";
-import { ScrollView } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import SidenavAdmin from "../components/SidenavAdmin";
 
@@ -85,6 +86,16 @@ const absenAdmin: React.FC = () => {
   const [filteredData, setFilteredData] = useState(tableData);
   const [value, setValue] = useState<string | null>(null);
   const [isFocus, setIsFocus] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData(); // Initial data fetch
+
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
   // Function to export to Excel
   const exportToExcel = async () => {
     try {
@@ -274,187 +285,198 @@ const absenAdmin: React.FC = () => {
   }, [selectedDate1, selectedDate2, value, tableData]);
 
   return (
-    <View style={{ flex: 1 }}>
-      <Header onToggleSidenav={toggleSidenav} />
-      <SpinnerOverlay visible={isLoading} />
+    <ScrollView
+      contentContainerStyle={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <View style={{ flex: 1 }}>
+        <Header onToggleSidenav={toggleSidenav} />
+        <SpinnerOverlay visible={isLoading} />
 
-      {isSidenavVisible && (
-        <TouchableOpacity
-          style={styles.blurContainer}
-          activeOpacity={1}
-          onPress={closeSidenav}
-        >
-          <BlurView intensity={50} style={StyleSheet.absoluteFill}>
-            <View style={styles.overlay} />
-          </BlurView>
-        </TouchableOpacity>
-      )}
+        {isSidenavVisible && (
+          <TouchableOpacity
+            style={styles.blurContainer}
+            activeOpacity={1}
+            onPress={closeSidenav}
+          >
+            <BlurView intensity={50} style={StyleSheet.absoluteFill}>
+              <View style={styles.overlay} />
+            </BlurView>
+          </TouchableOpacity>
+        )}
 
-      <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
+        <SidenavAdmin isVisible={isSidenavVisible} onClose={closeSidenav} />
 
-      <View className="px-4">
-        <View className="mt-4">
-          <Text className="mb-2 text-xl font-bold">Absen</Text>
-          <View className="flex flex-row gap-4">
-            <View>
-              <Text className="mb-2">Tanggal-1:</Text>
-              <TouchableOpacity
-                className="px-2 py-1 pr-5 border rounded"
-                onPress={() => showDatePicker(true)}
-              >
-                <Text className="text-xs">
-                  {selectedDate1 ? selectedDate1 : "Select Date"}
-                </Text>
-              </TouchableOpacity>
+        <View className="px-4">
+          <View className="mt-4">
+            <Text className="mb-2 text-xl font-bold">Absen</Text>
+            <View className="flex flex-row gap-4">
+              <View>
+                <Text className="mb-2">Tanggal-1:</Text>
+                <TouchableOpacity
+                  className="px-2 py-1 pr-5 border rounded"
+                  onPress={() => showDatePicker(true)}
+                >
+                  <Text className="text-xs">
+                    {selectedDate1 ? selectedDate1 : "Select Date"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View>
+                <Text className="mb-2">Tanggal-2:</Text>
+                <TouchableOpacity
+                  className="px-2 py-1 pr-5 border rounded"
+                  onPress={() => showDatePicker(false)}
+                >
+                  <Text className="text-xs">
+                    {selectedDate2 ? selectedDate2 : "Select Date"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View className="justify-center flex-1">
+                <Text className="mb-2">Type:</Text>
+                <Dropdown
+                  style={{
+                    height: 30,
+                    borderColor: "gray",
+                    borderWidth: 1,
+                    borderRadius: 5,
+                    paddingHorizontal: 8,
+                  }}
+                  placeholderStyle={{
+                    fontSize: 12,
+                    color: "gray",
+                  }}
+                  selectedTextStyle={{
+                    fontSize: 12,
+                  }}
+                  containerStyle={{
+                    backgroundColor: "white",
+                    borderRadius: 5,
+                  }}
+                  data={items}
+                  maxHeight={200}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={!isFocus ? "Select an option..." : "..."}
+                  value={value}
+                  onFocus={() => setIsFocus(true)}
+                  onBlur={() => setIsFocus(false)}
+                  onChange={(item) => {
+                    setValue(item.value);
+                    setIsFocus(false);
+                  }}
+                />
+              </View>
             </View>
             <View>
-              <Text className="mb-2">Tanggal-2:</Text>
+              <ScrollView horizontal={true}>
+                <View>
+                  <ScrollView style={styles.tableContainer}>
+                    <Table borderStyle={styles.tableBorder}>
+                      <Row
+                        data={tableHead}
+                        widthArr={widthArr}
+                        style={styles.tableHeader}
+                        textStyle={styles.headerText}
+                      />
+                      {filteredData.length > 0 ? (
+                        filteredData.map((row, index) => (
+                          <Row
+                            key={index}
+                            data={[
+                              row[0], // No
+                              row[1], // Nama Sales
+                              row[2], // Tanggal
+                              <TouchableOpacity
+                                style={styles.fotoContainer}
+                                onPress={() => openImageModal(row[3])}
+                              >
+                                <Image
+                                  source={{ uri: row[3] }}
+                                  style={{ width: 50, height: 50 }}
+                                />
+                              </TouchableOpacity>, // Foto Selfie
+                              <TouchableOpacity
+                                style={styles.fotoContainer}
+                                onPress={() => openImageModal(row[4])}
+                              >
+                                <Image
+                                  source={{ uri: row[4] }}
+                                  style={{ width: 50, height: 50 }}
+                                />
+                              </TouchableOpacity>, // Foto Etalase
+                              row[5], // Lokasi
+                              row[6], // Absen Time
+                              row[7], // Pulang Time
+                              row[8], // Detail
+                            ]}
+                            widthArr={widthArr}
+                            textStyle={styles.tableText}
+                            style={styles.tableRow}
+                          />
+                        ))
+                      ) : (
+                        <Row
+                          data={["No data yet"]}
+                          widthArr={widthArr}
+                          style={styles.noDataRow}
+                          textStyle={styles.noDataText}
+                        />
+                      )}
+                    </Table>
+                  </ScrollView>
+                </View>
+              </ScrollView>
+
               <TouchableOpacity
-                className="px-2 py-1 pr-5 border rounded"
-                onPress={() => showDatePicker(false)}
+                style={styles.exportButton}
+                className="w-[30%] rounded-md ml-64 mt-2 px-2 py-2"
+                onPress={exportToExcel} // Set onPress to exportToExcel function
               >
-                <Text className="text-xs">
-                  {selectedDate2 ? selectedDate2 : "Select Date"}
+                <Text className="text-xs text-center text-white">
+                  Ekspor ke Excel
                 </Text>
               </TouchableOpacity>
-            </View>
-            <View className="justify-center flex-1">
-              <Text className="mb-2">Type:</Text>
-              <Dropdown
-                style={{
-                  height: 30,
-                  borderColor: "gray",
-                  borderWidth: 1,
-                  borderRadius: 5,
-                  paddingHorizontal: 8,
-                }}
-                placeholderStyle={{
-                  fontSize: 12,
-                  color: "gray",
-                }}
-                selectedTextStyle={{
-                  fontSize: 12,
-                }}
-                containerStyle={{
-                  backgroundColor: "white",
-                  borderRadius: 5,
-                }}
-                data={items}
-                maxHeight={200}
-                labelField="label"
-                valueField="value"
-                placeholder={!isFocus ? "Select an option..." : "..."}
-                value={value}
-                onFocus={() => setIsFocus(true)}
-                onBlur={() => setIsFocus(false)}
-                onChange={(item) => {
-                  setValue(item.value);
-                  setIsFocus(false);
-                }}
-              />
             </View>
           </View>
-          <View>
-            <ScrollView horizontal={true}>
-              <View>
-                <ScrollView style={styles.tableContainer}>
-                  <Table borderStyle={styles.tableBorder}>
-                    <Row
-                      data={tableHead}
-                      widthArr={widthArr}
-                      style={styles.tableHeader}
-                      textStyle={styles.headerText}
-                    />
-                    {filteredData.length > 0 ? (
-                      filteredData.map((row, index) => (
-                        <Row
-                          key={index}
-                          data={[
-                            row[0], // No
-                            row[1], // Nama Sales
-                            row[2], // Tanggal
-                            <TouchableOpacity
-                              style={styles.fotoContainer}
-                              onPress={() => openImageModal(row[3])}
-                            >
-                              <Image
-                                source={{ uri: row[3] }}
-                                style={{ width: 50, height: 50 }}
-                              />
-                            </TouchableOpacity>, // Foto Selfie
-                            <TouchableOpacity
-                              style={styles.fotoContainer}
-                              onPress={() => openImageModal(row[4])}
-                            >
-                              <Image
-                                source={{ uri: row[4] }}
-                                style={{ width: 50, height: 50 }}
-                              />
-                            </TouchableOpacity>, // Foto Etalase
-                            row[5], // Lokasi
-                            row[6], // Absen Time
-                            row[7], // Pulang Time
-                            row[8], // Detail
-                          ]}
-                          widthArr={widthArr}
-                          textStyle={styles.tableText}
-                          style={styles.tableRow}
-                        />
-                      ))
-                    ) : (
-                      <Row
-                        data={["No data yet"]}
-                        widthArr={widthArr}
-                        style={styles.noDataRow}
-                        textStyle={styles.noDataText}
-                      />
-                    )}
-                  </Table>
-                </ScrollView>
-              </View>
-            </ScrollView>
-
+        </View>
+        <Modal
+          visible={modalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={closeImageModal}
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "rgba(0, 0, 0, 0.8)",
+            }}
+          >
+            {selectedImage && (
+              <Image
+                source={{ uri: selectedImage }}
+                style={{ width: "100%", height: "100%", resizeMode: "contain" }}
+              />
+            )}
             <TouchableOpacity
-              style={styles.exportButton}
-              className="w-[30%] rounded-md ml-64 mt-2 px-2 py-2"
-              onPress={exportToExcel} // Set onPress to exportToExcel function
+              onPress={closeImageModal}
+              style={{ position: "absolute", top: 20, right: 20 }}
             >
-              <Text className="text-xs text-center text-white">
-                Ekspor ke Excel
-              </Text>
+              <Text style={{ color: "white", fontSize: 20 }}>Tutup</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Modal>
       </View>
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closeImageModal}
-      >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-          }}
-        >
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={{ width: "100%", height: "100%", resizeMode: "contain" }}
-            />
-          )}
-          <TouchableOpacity
-            onPress={closeImageModal}
-            style={{ position: "absolute", top: 20, right: 20 }}
-          >
-            <Text style={{ color: "white", fontSize: 20 }}>Tutup</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-    </View>
+    </ScrollView>
   );
 };
 
