@@ -55,7 +55,7 @@ async function registerForPushNotificationsAsync() {
       return;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const tokenData = await Notifications.getDevicePushTokenAsync();
     return tokenData.data; // Return the push token
   } else {
     alert("Must use physical device for push notifications");
@@ -67,6 +67,7 @@ async function registerForPushNotificationsAsync() {
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#FF231F7C",
+      sound: "default",
     });
   }
 }
