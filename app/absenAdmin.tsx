@@ -254,7 +254,7 @@ const absenAdmin: React.FC = () => {
 
       const filtered = tableData.filter((row) => {
         const absenDate = parseDate(row[2]); // 'Tanggal' column
-        const attendanceType = row[5]; // 'Detail' column where the attendance type is stored
+        const attendanceType = row[8]; // 'Detail' column where the attendance type is stored
 
         // If no date is selected, show today's records by default
         const today = new Date();
