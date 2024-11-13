@@ -208,6 +208,14 @@ const createSales = () => {
   };
   const handleEditUser = () =>
     withLoading(async () => {
+      if (username.length < 3 || password.length < 8) {
+        Alert.alert(
+          "Error",
+          "Username dan password masing-masing harus memiliki minimal 3 dan 8 karakter."
+        );
+        return; // Exit the function if validation fails
+      }
+
       Alert.alert("Edit Akun", "Edit data ini?", [
         { text: "Batal", style: "cancel" },
         {
@@ -248,10 +256,13 @@ const createSales = () => {
     });
   const handleAddUser = () =>
     withLoading(async () => {
-       if (username.length < 3 || password.length < 8) {
-          Alert.alert("Error", "Username and password must be at least 8 characters long.");
-          return; // Exit the function if validation fails
-        }
+      if (username.length < 3 || password.length < 8) {
+        Alert.alert(
+          "Error",
+          "Username dan password masing-masing harus memiliki minimal 3 dan 8 karakter."
+        );
+        return; // Exit the function if validation fails
+      }
 
       Alert.alert("Tambah Akun", "Tambah data baru?", [
         { text: "Batal", style: "cancel" },
